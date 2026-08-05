@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Literal
-from typing import Any
+from typing import Literal, Any
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -69,69 +68,113 @@ def _require_mysql():
 
 def _latest_transactions_sql(sort_by: str = "amount_desc", chain: str | None = None) -> str:
     order_clause = {
-        "amount_desc": "ORDER BY value_eth DESC, block_number DESC, tx_hash DESC",
-        "latest": "ORDER BY block_number DESC, tx_hash DESC",
+        "value_usd_desc": "ORDER BY COALESCE(usd_at_execution, 0) DESC, value_eth DESC, block_number DESC, tx_hash DESC",
+        "amount_desc":    "ORDER BY value_eth DESC, block_number DESC, tx_hash DESC",
+        "latest":         "ORDER BY block_number DESC, tx_hash DESC",
     }.get(sort_by, "ORDER BY value_eth DESC, block_number DESC, tx_hash DESC")
-    
+
     where_clause = ""
     if chain and chain != "all":
-        where_clause = "WHERE COALESCE(chain_name, 'ethereum') = %s"
-        
+        where_clause = "WHERE (chain_name = %s OR (chain_name IS NULL AND %s = 'ethereum'))"
+
     return f"""
         SELECT tx_hash, from_address, to_address, value_eth, timestamp, block_number,
-               is_contract_call, gas_used, status, COALESCE(chain_name, 'ethereum') AS chain_name
+               is_contract_call, gas_used, status,
+               usd_at_execution,
+               COALESCE(chain_name,      'ethereum') AS chain_name,
+               COALESCE(chain_id,        1)          AS chain_id,
+               COALESCE(blockchain_type, 'EVM')      AS blockchain_type,
+               COALESCE(native_asset,    'ETH')      AS native_asset
         FROM transactions
         {where_clause}
         {order_clause}
         LIMIT %s OFFSET %s
         """
 
+
 @router.get("/")
 async def get_latest_transactions(
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    sort_by: Literal["amount_desc", "latest"] = Query("amount_desc"),
+    sort_by: Literal["value_usd_desc", "amount_desc", "latest"] = Query("amount_desc"),
     chain: str | None = Query(None),
 ):
     _require_mysql()
     threshold = _threshold_eth()
-    
+
     if chain and chain != "all":
         total_row = await fetch_one(
-            "SELECT COUNT(*) AS total FROM transactions WHERE COALESCE(chain_name, 'ethereum') = %s",
-            (chain,)
+            "SELECT COUNT(*) AS total FROM transactions "
+            "WHERE chain_name = %s OR (chain_name IS NULL AND %s = 'ethereum')",
+            (chain, chain),
         ) or {}
-        rows = await fetch_all(_latest_transactions_sql(sort_by, chain), (chain, limit, offset))
+        rows = await fetch_all(
+            _latest_transactions_sql(sort_by, chain),
+            (chain, chain, limit, offset),
+        )
     else:
         total_row = await fetch_one("SELECT COUNT(*) AS total FROM transactions") or {}
         rows = await fetch_all(_latest_transactions_sql(sort_by), (limit, offset))
 
+    # Live current market prices
+    def _get_live_rates() -> dict:
+        try:
+            from services.live_prices import get_live_prices
+            return get_live_prices()
+        except Exception:
+            return {}
+
+    live_rates = _get_live_rates()
+
     results = []
     for row in rows:
-        value_eth = float(row.get("value_eth") or 0.0)
-        score = _risk_score(value_eth, threshold)
+        value_eth    = float(row.get("value_eth") or 0.0)
+        native_asset = row.get("native_asset") or "ETH"
+        chain_name   = row.get("chain_name") or "ethereum"
+        score        = _risk_score(value_eth, threshold)
+
+        # Historical USD at execution time (Chainlink oracle stored at ETL time)
+        usd_stored = row.get("usd_at_execution")
+        usd_at_execution = float(usd_stored) if usd_stored is not None and float(usd_stored) > 0 else 0.0
+
+        # Current market USD value (live price × amount)
+        current_rate      = live_rates.get(native_asset, 0.0)
+        current_usd_value = round(value_eth * current_rate, 2) if current_rate > 0 else 0.0
+
+        # Displayed USD: prefer historical oracle value, fall back to current price
+        display_usd = usd_at_execution if usd_at_execution > 0 else current_usd_value
+
         results.append({
-            "hash": row.get("tx_hash"),
-            "sender": row.get("from_address"),
-            "receiver": row.get("to_address"),
-            "amount": f"{value_eth:.6f}",
-            "timestamp": _format_ts(row.get("timestamp")),
-            "blockNumber": int(row.get("block_number") or 0),
+            "hash":           row.get("tx_hash"),
+            "sender":         row.get("from_address"),
+            "receiver":       row.get("to_address"),
+            "amount":         f"{value_eth:.6f}",
+            "timestamp":      _format_ts(row.get("timestamp")),
+            "blockNumber":    int(row.get("block_number") or 0),
             "isContractCall": bool(row.get("is_contract_call")),
-            "gasUsed": row.get("gas_used"),
-            "status": row.get("status"),
-            "riskScore": round(score, 1),
-            "riskLabel": _risk_label(value_eth, threshold),
-            "chain": row.get("chain_name") or "ethereum",
+            "gasUsed":        row.get("gas_used"),
+            "status":         row.get("status"),
+            "riskScore":      round(score, 1),
+            "riskLabel":      _risk_label(value_eth, threshold),
+            # Chain identity
+            "chain":           chain_name,
+            "chainId":         int(row.get("chain_id") or 1),
+            "blockchainType":  row.get("blockchain_type") or "EVM",
+            "nativeAsset":     native_asset,
+            # USD values
+            "usdValue":        round(display_usd, 2),
+            "usdAtExecution":  round(usd_at_execution, 2),
+            "currentUsdValue": current_usd_value,
         })
 
     total = int(total_row.get("total") or 0)
     return {
-        "items": results,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "sortBy": sort_by,
+        "items":   results,
+        "total":   total,
+        "limit":   limit,
+        "offset":  offset,
+        "sortBy":  sort_by,
+        "chain":   chain or "all",
         "hasMore": offset + len(results) < total,
     }
 
@@ -223,10 +266,7 @@ async def get_analytics():
 def _require_neo4j():
     driver = get_driver()
     if not driver:
-        raise HTTPException(
-            status_code=503,
-            detail="Neo4j is not connected. Graph exploration is unavailable.",
-        )
+        return None   # Soft fail — MySQL fallback used instead
     return driver
 
 
@@ -237,61 +277,108 @@ async def get_graph_data(
     hops: int = Query(2, ge=1, le=4),
     max_edges: int = Query(300, ge=50, le=3000),
     min_value: float = Query(0, ge=0),
+    chain: str | None = Query(None),
 ):
-    driver = _require_neo4j()
+    """
+    Return transaction graph edges for visualization.
+    Primary: Neo4j (EVM chains, when available).
+    Fallback: MySQL transactions table (all chains including BTC/SOL/UTXO).
+    """
+    driver = get_driver()
+
+    # Try Neo4j first for EVM address searches (0x...)
+    if driver and center and center.startswith('0x'):
+        try:
+            hops_clamped = max(1, min(int(hops), 4))
+            query = f"""
+            MATCH p = (a:Address {{address: $center}})-[:TRANSFER*1..{hops_clamped}]-(b:Address)
+            UNWIND relationships(p) AS r
+            WITH DISTINCT r
+            WHERE r.value_eth >= $min_value
+            RETURN startNode(r).address AS from_address,
+                   endNode(r).address AS to_address,
+                   r.value_eth AS value_eth,
+                   r.block_number AS block_number,
+                   r.tx_hash AS tx_hash
+            LIMIT $max_edges
+            """
+            params = {"center": center.lower(), "min_value": min_value, "max_edges": max_edges}
+            async with driver.session(database=NEO4J_DATABASE) as session:
+                result = await session.run(query, params)
+                rows = [record.data() async for record in result]
+            if rows:
+                return [
+                    {
+                        "sender": row.get("from_address"),
+                        "receiver": row.get("to_address"),
+                        "amount": float(row.get("value_eth") or 0.0),
+                        "blockNumber": int(row.get("block_number") or 0),
+                        "txHash": row.get("tx_hash"),
+                        "nativeAsset": "ETH",
+                        "chain": "ethereum",
+                    }
+                    for row in rows
+                ]
+        except Exception:
+            pass  # Fall through to MySQL
+
+    # MySQL fallback — works for ALL chains (ETH, BTC, SOL, LTC, DOGE, BCH, BNB, POL)
+    _require_mysql()
+
+    chain_filter = ""
+    chain_params: list = []
+    if chain and chain != "all":
+        chain_filter = " AND (chain_name = %s OR (chain_name IS NULL AND %s = 'ethereum'))"
+        chain_params = [chain, chain]
 
     if center:
-        hops = max(1, min(int(hops), 4))
-        query = f"""
-        MATCH p = (a:Address {{address: $center}})-[:TRANSFER*1..{hops}]-(b:Address)
-        UNWIND relationships(p) AS r
-        WITH DISTINCT r
-        WHERE r.value_eth >= $min_value
-        RETURN startNode(r).address AS from_address,
-               endNode(r).address AS to_address,
-               r.value_eth AS value_eth,
-               r.block_number AS block_number,
-               r.tx_hash AS tx_hash
-        LIMIT $max_edges
-        """
-        params = {"center": center.lower(), "min_value": min_value, "max_edges": max_edges}
+        # Direct address lookup — works for any address format (0x..., bc1..., sol...)
+        addr = center.lower().strip()
+        rows = await fetch_all(
+            f"""
+            SELECT from_address, to_address, value_eth, block_number, tx_hash,
+                   COALESCE(native_asset, 'ETH') AS native_asset,
+                   COALESCE(chain_name, 'ethereum') AS chain_name
+            FROM transactions
+            WHERE (LOWER(from_address) = %s OR LOWER(to_address) = %s)
+              AND value_eth >= %s
+              {chain_filter}
+            ORDER BY block_number DESC
+            LIMIT %s
+            """,
+            tuple([addr, addr, min_value] + chain_params + [max_edges]),
+        )
     elif search:
-        query = """
-        MATCH (a:Address)
-        WHERE toLower(a.address) CONTAINS toLower($search)
-        WITH a LIMIT 5
-        MATCH p = (a)-[:TRANSFER*1..2]-(b:Address)
-        UNWIND relationships(p) AS r
-        WITH DISTINCT r
-        WHERE r.value_eth >= $min_value
-        RETURN startNode(r).address AS from_address,
-               endNode(r).address AS to_address,
-               r.value_eth AS value_eth,
-               r.block_number AS block_number,
-               r.tx_hash AS tx_hash
-        LIMIT $max_edges
-        """
-        params = {"search": search, "min_value": min_value, "max_edges": max_edges}
+        # Partial address search
+        rows = await fetch_all(
+            f"""
+            SELECT from_address, to_address, value_eth, block_number, tx_hash,
+                   COALESCE(native_asset, 'ETH') AS native_asset,
+                   COALESCE(chain_name, 'ethereum') AS chain_name
+            FROM transactions
+            WHERE (LOWER(from_address) LIKE %s OR LOWER(to_address) LIKE %s)
+              AND value_eth >= %s
+              {chain_filter}
+            ORDER BY block_number DESC
+            LIMIT %s
+            """,
+            tuple([f"%{search.lower()}%", f"%{search.lower()}%", min_value] + chain_params + [max_edges]),
+        )
     else:
-        query = """
-        MATCH (a:Address)-[r:TRANSFER]->(b:Address)
-        WHERE r.value_eth >= $min_value
-        RETURN a.address AS from_address,
-               b.address AS to_address,
-               r.value_eth AS value_eth,
-               r.block_number AS block_number,
-               r.tx_hash AS tx_hash
-        ORDER BY r.block_number DESC
-        LIMIT $max_edges
-        """
-        params = {"min_value": min_value, "max_edges": max_edges}
-
-    try:
-        async with driver.session(database=NEO4J_DATABASE) as session:
-            result = await session.run(query, params)
-            rows = [record.data() async for record in result]
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Neo4j graph query failed: {exc}") from exc
+        # Default: latest transactions
+        rows = await fetch_all(
+            f"""
+            SELECT from_address, to_address, value_eth, block_number, tx_hash,
+                   COALESCE(native_asset, 'ETH') AS native_asset,
+                   COALESCE(chain_name, 'ethereum') AS chain_name
+            FROM transactions
+            WHERE value_eth >= %s
+              {chain_filter}
+            ORDER BY block_number DESC
+            LIMIT %s
+            """,
+            tuple([min_value] + chain_params + [max_edges]),
+        )
 
     return [
         {
@@ -300,8 +387,10 @@ async def get_graph_data(
             "amount": float(row.get("value_eth") or 0.0),
             "blockNumber": int(row.get("block_number") or 0),
             "txHash": row.get("tx_hash"),
+            "nativeAsset": row.get("native_asset") or "ETH",
+            "chain": row.get("chain_name") or "ethereum",
         }
-        for row in rows
+        for row in (rows or [])
     ]
 
 

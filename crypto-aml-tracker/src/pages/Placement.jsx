@@ -3,6 +3,7 @@ import Loader from '../components/common/Loader';
 import AnalyzeButton from '../components/common/AnalyzeButton';
 import ChainBadge from '../components/chain/ChainBadge';
 import ChainFilter from '../components/chain/ChainFilter';
+import ChainOfCustodyModal from '../components/ChainOfCustodyModal';
 import { getPlacements, getPlacementRuns, getPlacementSummary } from '../services/transactionService';
 
 const _BANNED = new Set(['funneling', 'funnel', 'immediate_utilization', 'immediate-utilization', 'immediate utilization']);
@@ -55,28 +56,26 @@ const resolveBehaviorProfile = (behaviorProfile, allBehaviors = []) => {
 };
 
 // Human-readable reason from placement reasons array
+// Shows actual backend-generated reasons with real values, not fixed template text
 const humanizeReason = (reasons = [], primaryBehavior = '') => {
     if (!reasons || reasons.length === 0) {
         if (primaryBehavior) return `Flagged for ${formatBehaviorLabel(primaryBehavior)} pattern detected in transaction flow.`;
         return 'Flagged by placement detection algorithm.';
     }
-    const map = {
-        'earliest reachable entity in traced suspicious flow': 'Origin point of a traced suspicious money flow. Funds entered the system through this entity.',
-        'downstream suspicious behavior: smurfing': 'Downstream addresses receiving funds from this entity show smurfing (splitting large amounts into many small transactions).',
-        'downstream suspicious behavior: structuring': 'Downstream addresses show structuring (transactions deliberately kept below reporting thresholds).',
-        'downstream suspicious behavior: micro_funding': 'Downstream addresses show micro-funding (many tiny deposits aggregating into larger amounts).',
-        'no prior suspicious history observed upstream in analyzed graph': 'No suspicious history found upstream. This entity appears to be a clean entry point for illicit funds.',
-        'suspicious history observed upstream in analyzed graph': 'Upstream addresses feeding this entity also have suspicious transaction history.',
-        'high placement score from graph position analysis': 'Graph position analysis identified this entity as a likely placement-stage entry point.',
-        'entity validated as placement origin': 'Confirmed as a placement-stage origin by the validation engine.',
+    // Clean up the raw reason: replace underscores, capitalize, keep real values
+    const cleanReason = (r) => {
+        if (!r) return null;
+        return r
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (c) => c.toUpperCase())
+            .trim();
     };
-    const readable = reasons.map((r) => {
-        const key = Object.keys(map).find((k) => r?.toLowerCase().includes(k.toLowerCase()));
-        return key ? map[key] : null;
-    }).filter(Boolean);
-    if (readable.length > 0) return readable[0];
-    // fallback: clean up the raw reason
-    return reasons[0]?.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || 'Flagged by placement detection algorithm.';
+    // Return first non-empty cleaned reason — preserves actual tx counts, amounts, etc.
+    for (const r of reasons) {
+        const cleaned = cleanReason(r);
+        if (cleaned) return cleaned;
+    }
+    return 'Flagged by placement detection algorithm.';
 };
 
 export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpenWorkspace }) {
@@ -96,6 +95,7 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
     const PAGE_SIZE = 10;
     const [clusterPopup, setClusterPopup] = useState(null);
     const [reasonPopup, setReasonPopup] = useState(null);
+    const [custodyEntity, setCustodyEntity] = useState(null);
     const deferredSearch = useDeferredValue(search);
 
     useEffect(() => {
@@ -370,17 +370,25 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
                                 <span style={{ fontSize: '11px', fontWeight: '700', color: '#8A9DB5', minWidth: '32px' }}>{formatNumber((alert.confidence || 0) * 100, 0)}%</span>
                             </div>
 
-                            {/* Analyze Button */}
-                            <AnalyzeButton
-                                entityId={alert.entity_id}
-                                entityType={alert.entity_type}
-                                onSelectAnalysis={(id, type, analysisType) => {
-                                    // Directly open workspace
-                                    if (onOpenWorkspace) {
-                                        onOpenWorkspace(id, type, 'Placement', analysisType);
-                                    }
-                                }}
-                            />
+                            {/* Analyze Button + Chain of Custody */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <AnalyzeButton
+                                    entityId={alert.entity_id}
+                                    entityType={alert.entity_type}
+                                    onSelectAnalysis={(id, type, analysisType) => {
+                                        if (onOpenWorkspace) {
+                                            onOpenWorkspace(id, type, 'Placement', analysisType);
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setCustodyEntity(alert.entity_id)}
+                                    style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '999px', background: 'rgba(201,168,76,0.10)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.25)', cursor: 'pointer', fontWeight: '700', whiteSpace: 'nowrap' }}
+                                >
+                                    🔗 Chain
+                                </button>
+                            </div>
                         </div>
                     );
                 })}
@@ -466,6 +474,9 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
                         </div>
                     </div>
                 </>
+            )}
+            {custodyEntity && (
+                <ChainOfCustodyModal entityId={custodyEntity} onClose={() => setCustodyEntity(null)} />
             )}
         </div>
     );

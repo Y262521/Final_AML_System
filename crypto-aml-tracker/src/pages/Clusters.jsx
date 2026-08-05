@@ -733,7 +733,9 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
 
     const openOwnerModal = (cluster = null) => {
         const owner = cluster?.owner;
-        const prefillAddress = cluster?.addresses?.[0]?.address || '';
+        // addresses can be objects {address:...} or plain strings
+        const firstAddr = cluster?.addresses?.[0];
+        const prefillAddress = typeof firstAddr === 'string' ? firstAddr : (firstAddr?.address || '');
         setOwnerForm({
             full_name: owner?.full_name || '',
             entity_type: owner?.entity_type || 'individual',
@@ -963,10 +965,11 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
                             <tr>
                                 <th style={{ ...th, width: '16%' }}>Cluster ID</th>
                                 <th style={{ ...th, width: '8%' }}>Chain</th>
-                                <th style={{ ...th, width: '20%' }}>Owner</th>
-                                <th style={{ ...th, width: '22%' }}>Location</th>
-                                <th style={{ ...th, width: '10%' }}>Members</th>
-                                <th style={{ ...th, width: '20%' }}>Total Balance</th>
+                                <th style={{ ...th, width: '18%' }}>Owner</th>
+                                <th style={{ ...th, width: '20%' }}>Location</th>
+                                <th style={{ ...th, width: '8%' }}>Members</th>
+                                <th style={{ ...th, width: '16%' }}>Total Balance</th>
+                                <th style={{ ...th, width: '14%' }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1013,17 +1016,43 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
                                                 {truncate(formatLocation(cluster.owner, cluster.label_status), 52)}
                                             </td>
                                             <td style={{ ...td, color: '#E2D9C8' }}>{memberCount}</td>
-                                            <td style={{ ...td, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <td style={td}>
                                                 <span style={{ fontWeight: '700', color: '#4ADE80' }}>{formatEth(cluster.total_balance)} {CHAIN_NATIVE_ASSET[cluster.chain_name] || 'ETH'}</span>
+                                            </td>
+                                            <td style={{ ...td, display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                {/* View drawer */}
                                                 <button
                                                     onClick={(event) => { event.stopPropagation(); openClusterDrawer(cluster); }}
                                                     style={{
-                                                        border: '1px solid rgba(201,168,76,0.20)', borderRadius: '8px', padding: '6px 10px',
+                                                        border: '1px solid rgba(201,168,76,0.20)', borderRadius: '8px', padding: '5px 9px',
                                                         background: 'rgba(201,168,76,0.06)', color: '#C9A84C', fontSize: '11px', fontWeight: '600',
-                                                        cursor: 'pointer',
+                                                        cursor: 'pointer', whiteSpace: 'nowrap',
                                                     }}
                                                 >
                                                     View
+                                                </button>
+                                                {/* Go to Graph Explorer centered on first cluster address */}
+                                                <button
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        // Try addresses array first (list of objects or strings)
+                                                        const addrs = cluster.addresses || [];
+                                                        const first = addrs[0];
+                                                        const addrStr = first
+                                                            ? (typeof first === 'string' ? first : first?.address || '')
+                                                            : '';
+                                                        // Fall back to cluster_id if no address loaded yet
+                                                        const target = addrStr || cluster.cluster_id || '';
+                                                        if (target && onAddressClick) onAddressClick(target);
+                                                    }}
+                                                    title="Open in Graph Explorer"
+                                                    style={{
+                                                        border: '1px solid rgba(96,165,250,0.25)', borderRadius: '8px', padding: '5px 9px',
+                                                        background: 'rgba(96,165,250,0.08)', color: '#60A5FA', fontSize: '11px', fontWeight: '600',
+                                                        cursor: 'pointer', whiteSpace: 'nowrap',
+                                                    }}
+                                                >
+                                                    🔍 Graph
                                                 </button>
                                             </td>
                                         </tr>
@@ -1046,7 +1075,30 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
                                 <div style={{ fontSize: '18px', fontWeight: '700', color: '#C8B98A' }}>Cluster details</div>
                                 <div style={{ fontSize: '12px', color: '#6B7E94', marginTop: '4px' }}>Cluster ID: {selectedCluster.cluster_id}</div>
                             </div>
-                            <button onClick={closeDrawer} style={{ border: '1px solid rgba(201,168,76,0.15)', background: 'transparent', color: '#8A9DB5', fontSize: '13px', fontWeight: '700', cursor: 'pointer', borderRadius: '8px', padding: '6px 12px' }}>Close</button>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                {/* Navigate to Graph Explorer using first address of this cluster */}
+                                <button
+                                    onClick={() => {
+                                        const addrs = selectedCluster.addresses || [];
+                                        const first = addrs[0];
+                                        const addrStr = typeof first === 'string' ? first : (first?.address || '');
+                                        if (addrStr && onAddressClick) {
+                                            closeDrawer();
+                                            onAddressClick(addrStr);
+                                        }
+                                    }}
+                                    title="Open cluster in Graph Explorer"
+                                    style={{
+                                        border: '1px solid rgba(96,165,250,0.25)', background: 'rgba(96,165,250,0.08)',
+                                        color: '#60A5FA', fontSize: '12px', fontWeight: '700',
+                                        cursor: 'pointer', borderRadius: '8px', padding: '6px 12px',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                >
+                                    🔍 Graph
+                                </button>
+                                <button onClick={closeDrawer} style={{ border: '1px solid rgba(201,168,76,0.15)', background: 'transparent', color: '#8A9DB5', fontSize: '13px', fontWeight: '700', cursor: 'pointer', borderRadius: '8px', padding: '6px 12px' }}>Close</button>
+                            </div>
                         </div>
                         <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
                             <section style={{ display: 'grid', gap: '14px' }}>
@@ -1066,7 +1118,7 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
                                     {[
                                         { label: 'Members', value: selectedCluster.addresses?.length ?? selectedCluster.cluster_size },
                                         { label: 'Total Balance', value: `${formatEth(selectedCluster.total_balance)} ${CHAIN_NATIVE_ASSET[selectedCluster.chain_name] || 'ETH'}` },
-                                        { label: 'Internal Flow', value: `${formatEth(selectedCluster.activity.total_in)} in / ${formatEth(selectedCluster.activity.total_out)} out` },
+                                        { label: 'Internal Flow', value: selectedCluster.activity ? `${formatEth(selectedCluster.activity.total_in)} in / ${formatEth(selectedCluster.activity.total_out)} out` : '—' },
                                     ].map(({ label, value }) => (
                                         <div key={label} style={{ padding: '12px 14px', borderRadius: '14px', background: 'rgba(201,168,76,0.05)', border: '1px solid rgba(201,168,76,0.12)', minWidth: '140px' }}>
                                             <div style={{ fontSize: '11px', color: '#6B7E94', marginBottom: '6px' }}>{label}</div>
@@ -1114,13 +1166,13 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
                             <section style={{ display: 'grid', gap: '12px' }}>
                                 <div style={{ fontSize: '12px', fontWeight: '700', color: '#4B5E72', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Activity / Behavior</div>
                                 <div style={{ display: 'grid', gap: '10px', padding: '16px', borderRadius: '16px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(201,168,76,0.10)' }}>
-                                    {getActivityHighlights(selectedCluster.activity, selectedCluster.risk_level).map((line, idx) => (
+                                    {getActivityHighlights(selectedCluster.activity || {}, selectedCluster.risk_level).map((line, idx) => (
                                         <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                                             <div style={{ width: '6px', height: '6px', marginTop: '8px', borderRadius: '50%', background: '#C9A84C', flexShrink: 0 }} />
                                             <div style={{ fontSize: '13px', color: '#8A9DB5', lineHeight: '1.5' }}>{line}</div>
                                         </div>
                                     ))}
-                                    <div style={{ fontSize: '12px', color: '#4B5E72', marginTop: '4px' }}>Total transactions: {selectedCluster.activity.total_tx_count}</div>
+                                    <div style={{ fontSize: '12px', color: '#4B5E72', marginTop: '4px' }}>Total transactions: {selectedCluster.activity?.total_tx_count ?? '—'}</div>
                                 </div>
                             </section>
 
@@ -1128,22 +1180,30 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
                                 <div style={{ fontSize: '12px', fontWeight: '700', color: '#4B5E72', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Address List</div>
                                 {selectedCluster.addresses?.length ? (
                                     <div style={{ display: 'grid', gap: '10px' }}>
-                                        {(showAllAddresses ? selectedCluster.addresses : selectedCluster.addresses.slice(0, 5)).map((item) => (
-                                            <div key={item.address} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px', borderRadius: '14px', border: '1px solid rgba(201,168,76,0.12)', background: 'rgba(255,255,255,0.02)' }}>
-                                                <div>
-                                                    <div style={{ fontFamily: 'monospace', fontSize: '12px', color: '#C9A84C' }} title={item.address}>{truncate(item.address, 28)}</div>
-                                                    <div style={{ fontSize: '11px', color: '#6B7E94', marginTop: '4px' }}>
-                                                        {formatEth(item.total_in)} in · {formatEth(item.total_out)} out
+                                        {(showAllAddresses ? selectedCluster.addresses : selectedCluster.addresses.slice(0, 5)).map((item, addrIdx) => {
+                                            // addresses can be objects {address, total_in, total_out} or plain strings
+                                            const addrStr = typeof item === 'string' ? item : (item?.address || '');
+                                            const totalIn = typeof item === 'object' ? item?.total_in : null;
+                                            const totalOut = typeof item === 'object' ? item?.total_out : null;
+                                            return (
+                                                <div key={addrStr || addrIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px', borderRadius: '14px', border: '1px solid rgba(201,168,76,0.12)', background: 'rgba(255,255,255,0.02)' }}>
+                                                    <div>
+                                                        <div style={{ fontFamily: 'monospace', fontSize: '12px', color: '#C9A84C' }} title={addrStr}>{truncate(addrStr, 28)}</div>
+                                                        {totalIn !== null && (
+                                                            <div style={{ fontSize: '11px', color: '#6B7E94', marginTop: '4px' }}>
+                                                                {formatEth(totalIn)} in · {formatEth(totalOut)} out
+                                                            </div>
+                                                        )}
                                                     </div>
+                                                    <button
+                                                        onClick={() => onAddressClick && onAddressClick(addrStr)}
+                                                        style={{ border: '1px solid rgba(201,168,76,0.20)', borderRadius: '10px', padding: '8px 12px', background: 'rgba(201,168,76,0.06)', color: '#C9A84C', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                                                    >
+                                                        Graph
+                                                    </button>
                                                 </div>
-                                                <button
-                                                    onClick={() => onAddressClick && onAddressClick(item.address)}
-                                                    style={{ border: '1px solid rgba(201,168,76,0.20)', borderRadius: '10px', padding: '8px 12px', background: 'rgba(201,168,76,0.06)', color: '#C9A84C', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
-                                                >
-                                                    Graph
-                                                </button>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                         {selectedCluster.addresses.length > 5 && (
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                                                 <div style={{ fontSize: '11px', color: '#6B7E94' }}>

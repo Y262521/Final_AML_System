@@ -54,9 +54,16 @@ for chain_name in EVM_CHAINS:
     except ConnectionError as e:
         results[chain_name] = {"status": "no_rpc"}
         print(f"SKIP (no RPC: {str(e)[:40]})")
+        # Still include ethereum in ok_chains so engines run on existing DB data
+        if chain_name == "ethereum" and chain_name not in ok_chains:
+            ok_chains.append(chain_name)
+            print(f"    (will run ETH engines on existing DB data)")
     except Exception as e:
         results[chain_name] = {"status": "error", "error": str(e)[:80]}
         print(f"ERROR: {str(e)[:80]}")
+        if chain_name == "ethereum" and chain_name not in ok_chains:
+            ok_chains.append(chain_name)
+            print(f"    (will run ETH engines on existing DB data)")
 
 # ── UTXO chains ───────────────────────────────────────────────────────────────
 UTXO_CHAINS = ["bitcoin", "litecoin", "dogecoin", "bitcoin_cash"]

@@ -95,10 +95,15 @@ class EVMExtractor(BaseExtractor):
                     pass  # older web3 without POA middleware
 
         if not self.w3.is_connected():
-            raise ConnectionError(
-                f"Web3 provider not connected for chain {self.chain_config.chain_name}: "
-                f"{self._rpc_url[:60]}…"
-            )
+            # Retry once — first connection attempt can fail on cold start due to
+            # TLS handshake or provider spin-up latency
+            import time as _time
+            _time.sleep(2)
+            if not self.w3.is_connected():
+                raise ConnectionError(
+                    f"Web3 provider not connected for chain {self.chain_config.chain_name}: "
+                    f"{self._rpc_url[:60]}…"
+                )
 
         # MongoDB collections — shared, tagged by chain_name
         mongo_client = get_mongo_client(self.cfg)

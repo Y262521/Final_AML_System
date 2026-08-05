@@ -4,6 +4,7 @@ import Loader from '../components/common/Loader';
 import AnalyzeButton from '../components/common/AnalyzeButton';
 import ChainBadge from '../components/chain/ChainBadge';
 import ChainFilter from '../components/chain/ChainFilter';
+import ChainOfCustodyModal from '../components/ChainOfCustodyModal';
 import { getLayeringAlerts, getLayeringRuns, getLayeringSummary } from '../services/transactionService';
 
 const formatNumber = (value, maximumFractionDigits = 2) => {
@@ -221,7 +222,7 @@ function ReasonPreview({ text, onExpand }) {
 
 export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
     const [runs, setRuns] = useState([]);
-    const [selectedRunId, setSelectedRunId] = useState(null);
+    const [userSelectedRunId, setUserSelectedRunId] = useState(null); // only set by explicit user action
     const [dateTimeInput, setDateTimeInput] = useState('');
     const [summary, setSummary] = useState(null);
     const [alerts, setAlerts] = useState([]);
@@ -233,19 +234,20 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
     const [page, setPage] = useState(1);
     const PAGE_SIZE = 10;
     const [reasonPopup, setReasonPopup] = useState(null);
+    const [custodyEntity, setCustodyEntity] = useState(null);
     const deferredSearch = useDeferredValue(search);
 
     useEffect(() => {
         getLayeringRuns()
             .then((data) => {
                 setRuns(data || []);
-                if (data && data.length > 0) {
-                    setSelectedRunId(data[0].id);
-                    if (data[0].completed_at) {
-                        const dt = new Date(data[0].completed_at);
-                        const pad = (n) => String(n).padStart(2, '0');
-                        setDateTimeInput(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`);
-                    }
+                // Set the display date to the latest run for the picker UI
+                // but do NOT set selectedRunId — that would trigger a re-fetch
+                // with a specific run_id and override the full batch query
+                if (data && data.length > 0 && data[0].completed_at) {
+                    const dt = new Date(data[0].completed_at);
+                    const pad = (n) => String(n).padStart(2, '0');
+                    setDateTimeInput(`${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`);
                 }
             })
             .catch((err) => setError(err.message));
@@ -255,9 +257,10 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
         setLoading(true);
         setError(null);
         Promise.all([
-            getLayeringSummary(selectedRunId || undefined),
+            // Pass userSelectedRunId only when explicitly chosen — otherwise null = batch query
+            getLayeringSummary(userSelectedRunId || undefined),
             getLayeringAlerts({
-                runId: selectedRunId || undefined,
+                runId: userSelectedRunId || undefined,
             }),
         ])
             .then(([summaryResponse, alertsResponse]) => {
@@ -266,11 +269,11 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
             })
             .catch((err) => setError(err.message))
             .finally(() => setLoading(false));
-    }, [selectedRunId]);
+    }, [userSelectedRunId]);
 
     useEffect(() => {
         setPage(1);
-    }, [deferredSearch, methodFilter, selectedRunId]);
+    }, [deferredSearch, methodFilter, userSelectedRunId]);
 
     const allMethods = Array.from(new Set(alerts.flatMap((alert) => alert.methods || []))).sort();
     const filteredAlerts = alerts.filter((alert) => {
@@ -406,9 +409,9 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
                             const picked = new Date(val).getTime();
                             const candidates = runs.filter((r) => r.completed_at && new Date(r.completed_at).getTime() <= picked);
                             if (candidates.length > 0) {
-                                setSelectedRunId(candidates[0].id);
+                                setUserSelectedRunId(candidates[0].id);
                             } else {
-                                setSelectedRunId(runs[runs.length - 1].id);
+                                setUserSelectedRunId(runs[runs.length - 1].id);
                             }
                         }}
                         style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid rgba(201,168,76,0.12)', background: 'rgba(201,168,76,0.04)', color: '#E2D9C8', fontSize: '13px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}
@@ -424,7 +427,7 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
                                 const inputVal = e.target.value;
                                 setDateTimeInput(inputVal);
                                 const run = runs.find((r) => r.completed_at && new Date(r.completed_at).toISOString().slice(0, 16) === inputVal);
-                                if (run) setSelectedRunId(run.id);
+                                if (run) setUserSelectedRunId(run.id);
                             }}
                             style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid rgba(201,168,76,0.12)', background: 'rgba(201,168,76,0.04)', color: '#E2D9C8', fontSize: '13px', fontWeight: '600', cursor: 'pointer', outline: 'none', maxWidth: '320px' }}
                         >
@@ -558,15 +561,24 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
                                         </button>
                                     </td>
                                     <td style={{ padding: '16px', borderBottom: '1px solid rgba(201,168,76,0.10)' }}>
-                                        <AnalyzeButton
-                                            entityId={alert.entity_id}
-                                            entityType={alert.entity_type}
-                                            onSelectAnalysis={(id, type, analysisType) => {
-                                                if (onOpenWorkspace) {
-                                                    onOpenWorkspace(id, type, 'Layering', analysisType);
-                                                }
-                                            }}
-                                        />
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                            <AnalyzeButton
+                                                entityId={alert.entity_id}
+                                                entityType={alert.entity_type}
+                                                onSelectAnalysis={(id, type, analysisType) => {
+                                                    if (onOpenWorkspace) {
+                                                        onOpenWorkspace(id, type, 'Layering', analysisType);
+                                                    }
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setCustodyEntity(alert.entity_id)}
+                                                style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '999px', background: 'rgba(201,168,76,0.10)', color: '#C9A84C', border: '1px solid rgba(201,168,76,0.25)', cursor: 'pointer', fontWeight: '700', whiteSpace: 'nowrap' }}
+                                            >
+                                                🔗 Chain
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -659,6 +671,9 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
                     </div>
                 </>
             ) : null}
+            {custodyEntity && (
+                <ChainOfCustodyModal entityId={custodyEntity} onClose={() => setCustodyEntity(null)} />
+            )}
         </div>
     );
 }

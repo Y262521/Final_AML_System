@@ -60,6 +60,7 @@ const formatUSD = (value) => {
 };
 
 const SORT_OPTIONS = [
+  { value: 'value_usd_desc', label: 'USD Value (high to low)' },
   { value: 'amount_desc', label: 'Native Amount (high to low)' },
   { value: 'latest', label: 'Most Recent' },
 ];

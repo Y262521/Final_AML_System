@@ -620,13 +620,21 @@ TRACKED_TOKENS = {
     "USDT": {"decimals": 6,  "contract": "0xdac17f958d2ee523a2206206994597c13d831ec7"},
     "USDC": {"decimals": 6,  "contract": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"},
     "DAI":  {"decimals": 18, "contract": "0x6b175474e89094c44da98b954eedeac495271d0f"},
+    # Multi-chain native assets
+    "BTC":  {"decimals": 8,  "is_native": True},
+    "LTC":  {"decimals": 8,  "is_native": True},
+    "DOGE": {"decimals": 8,  "is_native": True},
+    "BCH":  {"decimals": 8,  "is_native": True},
+    "BNB":  {"decimals": 18, "is_native": True},
+    "POL":  {"decimals": 18, "is_native": True},
+    "SOL":  {"decimals": 9,  "is_native": True},
 }
 
 
 async def _get_address_tx_history(address: str) -> List[dict]:
     """
-    Pull all ETH transactions for `address` from the local DB.
-    Includes usd_at_execution (Chainlink oracle price at time of tx) for cost basis.
+    Pull all transactions for `address` from the local DB across ALL chains.
+    Uses native_asset column so BTC/SOL/LTC etc. get the right token symbol.
     """
     addr = address.lower()
     rows = await fetch_all(
@@ -639,7 +647,8 @@ async def _get_address_tx_history(address: str) -> List[dict]:
             timestamp,
             block_number,
             usd_at_execution,
-            'ETH'               AS token_symbol
+            COALESCE(UPPER(native_asset), 'ETH') AS token_symbol,
+            COALESCE(chain_name, 'ethereum')     AS chain_name
         FROM transactions
         WHERE (LOWER(from_address) = %s OR LOWER(to_address) = %s)
           AND value_eth > 0
@@ -674,8 +683,9 @@ async def compute_mvrv_for_address(
 
     for row in tx_rows:
         sym = (row.get("token_symbol") or "ETH").upper()
+        # Auto-create tracker for any native asset not in TRACKED_TOKENS (future chains)
         if sym not in trackers:
-            continue
+            trackers[sym] = CostBasisTracker(method)
 
         amount = Decimal(str(row.get("amount") or 0))
         if amount <= 0:
@@ -834,12 +844,12 @@ async def compute_mvrv_for_cluster(
     for r in results:
         if isinstance(r, Exception):
             continue
-        agg["market_value_usd"]   += r["market_value_usd"]
-        agg["realized_value_usd"] += r["realized_value_usd"]
-        agg["unrealized_pnl_usd"] += r["unrealized_pnl_usd"]
-        agg["realized_pnl_usd"]   += r["realized_pnl_usd"]
-        agg["net_pnl_usd"]        += r["net_pnl_usd"]
-        agg["tx_count_total"]     += r["tx_count_total"]
+        agg["market_value_usd"]   += float(r.get("market_value_usd") or 0)
+        agg["realized_value_usd"] += float(r.get("realized_value_usd") or 0)
+        agg["unrealized_pnl_usd"] += float(r.get("unrealized_pnl_usd") or 0)
+        agg["realized_pnl_usd"]   += float(r.get("realized_pnl_usd") or 0)
+        agg["net_pnl_usd"]        += float(r.get("net_pnl_usd") or 0)
+        agg["tx_count_total"]     += int(r.get("tx_count_total") or 0)
 
     rv = agg["realized_value_usd"]
     mv = agg["market_value_usd"]

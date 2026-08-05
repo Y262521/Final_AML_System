@@ -15,6 +15,45 @@ import { getGraphData, getOwnerByAddress } from '../services/transactionService'
 import { filterEdgesData, collapseLowActivityNodes, applyRadialLayout } from '../utils/graphUtils';
 import Loader from '../components/common/Loader';
 
+// Chain-specific block explorer URLs
+const CHAIN_EXPLORERS = {
+  ethereum: (addr) => `https://etherscan.io/address/${addr}`,
+  bnb: (addr) => `https://bscscan.com/address/${addr}`,
+  polygon: (addr) => `https://polygonscan.com/address/${addr}`,
+  arbitrum: (addr) => `https://arbiscan.io/address/${addr}`,
+  base: (addr) => `https://basescan.org/address/${addr}`,
+  bitcoin: (addr) => `https://blockstream.info/address/${addr}`,
+  litecoin: (addr) => `https://litecoinblockexplorer.net/address/${addr}`,
+  dogecoin: (addr) => `https://dogechain.info/address/${addr}`,
+  bitcoin_cash: (addr) => `https://explorer.bitcoin.com/bch/address/${addr}`,
+  solana: (addr) => `https://explorer.solana.com/address/${addr}`,
+};
+
+const CHAIN_NATIVE_ASSET = {
+  ethereum: 'ETH', base: 'ETH', arbitrum: 'ETH',
+  bnb: 'BNB', polygon: 'POL', solana: 'SOL',
+  bitcoin: 'BTC', litecoin: 'LTC', dogecoin: 'DOGE', bitcoin_cash: 'BCH',
+};
+
+const getExplorerUrl = (address, chain) => {
+  const fn = CHAIN_EXPLORERS[chain] || CHAIN_EXPLORERS.ethereum;
+  return fn(address);
+};
+
+// Whether an address string belongs to an EVM chain (starts with 0x)
+const isEvmAddress = (addr) => addr && addr.startsWith('0x') && addr.length >= 10;
+
+// Detect chain from address format for display hints
+const guessChainFromAddress = (addr) => {
+  if (!addr) return 'ethereum';
+  if (addr.startsWith('0x')) return 'ethereum';
+  if (addr.startsWith('bc1') || addr.startsWith('1') || addr.startsWith('3')) return 'bitcoin';
+  if (addr.startsWith('ltc1') || addr.startsWith('L') || addr.startsWith('M')) return 'litecoin';
+  if (addr.startsWith('D')) return 'dogecoin';
+  if (addr.startsWith('bitcoincash:') || addr.startsWith('q')) return 'bitcoin_cash';
+  if (addr.length >= 32 && addr.length <= 44) return 'solana'; // Base58 Solana address
+  return 'ethereum';
+};
 const HIGH_VALUE_THRESHOLD = Number(import.meta.env.VITE_HIGH_VALUE_THRESHOLD_ETH || 10);
 const NODE_COLOR = '#22c55e';
 const HUB_COLOR = '#ef4444';
@@ -119,13 +158,14 @@ const buildGraph = (edgesData, options = {}) => {
 
     if (tx.sender && tx.receiver && tx.receiver !== 'Contract Creation') {
       const amt = parseFloat(tx.amount) > 0;
+      const asset = tx.nativeAsset || CHAIN_NATIVE_ASSET[tx.chain] || 'ETH';
       edgesArray.push({
         id: `e-${index}`,
         source: tx.sender,
         target: tx.receiver,
         type: 'default',
         animated: false,
-        label: amt ? `${parseFloat(tx.amount).toFixed(4)} ETH` : '',
+        label: amt ? `${parseFloat(tx.amount).toFixed(4)} ${asset}` : '',
         style: { stroke: SEND_EDGE, strokeWidth: 2 },
         markerEnd: { type: 'arrowclosed', color: SEND_EDGE, width: 20, height: 20 },
         labelStyle: { fontSize: '9px', fill: '#bfdbfe', fontWeight: '600' },
@@ -281,8 +321,8 @@ const AddressPanel = ({ address, stats, edgesData, onClose }) => {
           {[
             ['Sent', `${stats.sentCount} txns`],
             ['Received', `${stats.receivedCount} txns`],
-            ['Total Sent', `${stats.totalSent} ETH`],
-            ['Total Received', `${stats.totalReceived} ETH`],
+            ['Total Sent', `${stats.totalSent} ${stats.nativeAsset || 'native'}`],
+            ['Total Received', `${stats.totalReceived} ${stats.nativeAsset || 'native'}`],
             ['Unique Receivers', stats.uniqueReceivers],
             ['Unique Senders', stats.uniqueSenders],
           ].map(([label, value]) => (
@@ -296,14 +336,16 @@ const AddressPanel = ({ address, stats, edgesData, onClose }) => {
 
       {/* Links */}
       <div style={{ padding: '12px 18px', borderBottom: '1px solid rgba(201,168,76,0.08)', display: 'flex', gap: '8px' }}>
-        <a href={`https://etherscan.io/address/${address}`} target="_blank" rel="noreferrer"
+        <a href={getExplorerUrl(address, stats.chain || guessChainFromAddress(address))} target="_blank" rel="noreferrer"
           style={{ flex: 1, textAlign: 'center', padding: '8px', background: 'rgba(96,165,250,0.10)', color: '#60A5FA', borderRadius: '7px', fontSize: '12px', fontWeight: '600', textDecoration: 'none', border: '1px solid rgba(96,165,250,0.25)' }}>
-          🔍 Etherscan
+          🔍 Explorer
         </a>
-        <a href={`https://etherscan.io/address/${address}#tokentxns`} target="_blank" rel="noreferrer"
-          style={{ flex: 1, textAlign: 'center', padding: '8px', background: 'rgba(74,222,128,0.10)', color: '#4ADE80', borderRadius: '7px', fontSize: '12px', fontWeight: '600', textDecoration: 'none', border: '1px solid rgba(74,222,128,0.25)' }}>
-          🪙 Tokens
-        </a>
+        {stats.chain === 'ethereum' || (!stats.chain && isEvmAddress(address)) ? (
+          <a href={`https://etherscan.io/address/${address}#tokentxns`} target="_blank" rel="noreferrer"
+            style={{ flex: 1, textAlign: 'center', padding: '8px', background: 'rgba(74,222,128,0.10)', color: '#4ADE80', borderRadius: '7px', fontSize: '12px', fontWeight: '600', textDecoration: 'none', border: '1px solid rgba(74,222,128,0.25)' }}>
+            🪙 Tokens
+          </a>
+        ) : null}
       </div>
 
       {/* Recent transactions */}
@@ -342,7 +384,7 @@ const AddressPanel = ({ address, stats, edgesData, onClose }) => {
                   <span style={{ color: isSender ? '#F87171' : '#4ADE80', fontWeight: '600' }}>
                     {isSender ? '↑ Sent' : '↓ Received'}
                   </span>
-                  <span style={{ color: '#4ADE80', fontWeight: '600' }}>{parseFloat(tx.amount).toFixed(6)} ETH</span>
+                  <span style={{ color: '#4ADE80', fontWeight: '600' }}>{parseFloat(tx.amount).toFixed(6)} {tx.nativeAsset || CHAIN_NATIVE_ASSET[tx.chain] || 'native'}</span>
                 </div>
                 <div style={{ color: '#6B7E94', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {isSender ? `→ ${tx.receiver?.slice(0, 12)}...` : `← ${tx.sender?.slice(0, 12)}...`}
@@ -384,7 +426,8 @@ const GraphExplorerInner = ({ initialAddress, graphVersion, lastUpdated }) => {
     setLoading(true);
     try {
       const trimmed = term.trim();
-      const isExact = trimmed.startsWith('0x') && trimmed.length >= 10;
+      // Accept any address format — 0x... for EVM, base58 for BTC/SOL, etc.
+      const isExact = trimmed.length >= 10 && !trimmed.includes(' ');
       const data = trimmed
         ? await getGraphData(isExact
           ? { center: trimmed, hops, maxEdges: edgeCap, minValue }
@@ -447,6 +490,10 @@ const GraphExplorerInner = ({ initialAddress, graphVersion, lastUpdated }) => {
     const s = statsMap[addr] || {};
     const out = edges.filter(e => e.source === addr);
     const inc = edges.filter(e => e.target === addr);
+    // Detect chain from the transactions involving this address
+    const relatedTx = edgesData.find(tx => tx.sender === addr || tx.receiver === addr);
+    const detectedChain = relatedTx?.chain || guessChainFromAddress(addr);
+    const detectedAsset = relatedTx?.nativeAsset || CHAIN_NATIVE_ASSET[detectedChain] || 'native';
     setSelected(addr);
     setWalletStats({
       sentCount: out.length,
@@ -456,8 +503,10 @@ const GraphExplorerInner = ({ initialAddress, graphVersion, lastUpdated }) => {
       uniqueReceivers: s.receivers?.size || 0,
       uniqueSenders: s.senders?.size || 0,
       isHighValue: (s.maxTransaction || 0) >= HIGH_VALUE_THRESHOLD,
+      chain: detectedChain,
+      nativeAsset: detectedAsset,
     });
-  }, [statsMap, edges]);
+  }, [statsMap, edges, edgesData]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -541,7 +590,7 @@ const GraphExplorerInner = ({ initialAddress, graphVersion, lastUpdated }) => {
           </select>
         </label>
         <label style={{ fontSize: '11px', color: '#8A9DB5', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          Min ETH
+          Min amount
           <select value={minValue} onChange={e => setMinValue(Number(e.target.value))}
             style={{ padding: '5px 8px', borderRadius: '6px', border: '1px solid rgba(201,168,76,0.18)', fontSize: '11px', background: 'rgba(10,16,32,0.8)', color: '#E2D9C8' }}>
             {[0, 0.1, 1, 5, 10].map(v => <option key={v} value={v}>{v}</option>)}
@@ -570,10 +619,10 @@ const GraphExplorerInner = ({ initialAddress, graphVersion, lastUpdated }) => {
       {/* ── Legend ── */}
       <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#8A9DB5', flexWrap: 'wrap' }}>
         <span><span style={{ color: NODE_COLOR, fontWeight: '700' }}>●</span> Normal wallet</span>
-        <span><span style={{ color: HUB_COLOR, fontWeight: '700' }}>●</span> High-value wallet (10+ ETH tx)</span>
+        <span><span style={{ color: HUB_COLOR, fontWeight: '700' }}>●</span> High-value wallet (10+ native)</span>
         <span><span style={{ color: CONTRACT_COLOR, fontWeight: '700' }}>●</span> Contract</span>
         <span><span style={{ color: '#8A9DB5', fontWeight: '700' }}>●</span> Summary node</span>
-        <span style={{ color: '#4B5E72' }}>Drag nodes · Scroll to zoom · Click node for details</span>
+        <span style={{ color: '#4B5E72' }}>Supports ETH, BTC, SOL, BNB, LTC, DOGE + more · Drag nodes · Scroll to zoom · Click node for details</span>
       </div>
 
       {/* ── Graph canvas ── */}

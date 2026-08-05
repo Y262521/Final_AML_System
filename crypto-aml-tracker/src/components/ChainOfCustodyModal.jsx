@@ -75,7 +75,7 @@ const buildGraphFromEdges = (edges, addresses) => {
             target: tgt,
             type: 'default',
             animated: addrSet.has(src) || addrSet.has(tgt),
-            label: edge.value_eth > 0 ? `${Number(edge.value_eth).toFixed(4)} ETH` : '',
+            label: edge.value_eth > 0 ? `${Number(edge.value_eth).toFixed(4)} ${edge.native_asset || 'native'}` : '',
             style: { stroke: SEND_EDGE, strokeWidth: 2 },
             markerEnd: { type: 'arrowclosed', color: SEND_EDGE, width: 20, height: 20 },
             labelStyle: { fontSize: '10px', fill: '#bfdbfe', fontWeight: '600' },
@@ -100,7 +100,10 @@ const GraphPanel = ({ edges, addresses }) => {
     if (!edges?.length) {
         return (
             <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                No Neo4j graph data available for this entity.
+                No transaction graph data available for this entity.
+                <div style={{ fontSize: '11px', marginTop: '6px', color: '#64748b' }}>
+                    Graph data loads from your transaction history. Run ETL to populate.
+                </div>
             </div>
         );
     }

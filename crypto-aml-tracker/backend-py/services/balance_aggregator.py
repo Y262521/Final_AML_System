@@ -61,15 +61,11 @@ _LATEST_ROUND_DATA_SELECTOR = "0xfeaf968c"
 def _collect_rpc_urls() -> List[str]:
     """
     Return the single Alchemy RPC URL from environment.
-    Alchemy is the ONLY permitted blockchain data provider.
-    No fallback URLs. No alternative providers.
+    Returns empty list if not configured — callers must handle this gracefully.
     """
     url = (os.getenv("ALCHEMY_RPC") or "").strip()
     if not url or "/v2/demo" in url.lower():
-        raise RuntimeError(
-            "ALCHEMY_RPC is not configured or uses the demo key. "
-            "Set ALCHEMY_RPC=https://eth-mainnet.g.alchemy.com/v2/<your-key> in .env"
-        )
+        return []
     return [url]
 
 
@@ -77,15 +73,22 @@ class BalanceAggregator:
     """Aggregates on-chain balances for addresses and clusters."""
 
     def __init__(self):
-        self.rpc_urls = _collect_rpc_urls()
-        preview = self.rpc_urls[0][:56] + "…" if len(self.rpc_urls[0]) > 56 else self.rpc_urls[0]
-        print(f"🔗 Alchemy RPC: {preview}")
+        urls = _collect_rpc_urls()
+        self.rpc_urls = urls
+        self._rpc_available = bool(urls)
+        if urls:
+            preview = urls[0][:56] + "…" if len(urls[0]) > 56 else urls[0]
+            print(f"🔗 Alchemy RPC: {preview}")
+        else:
+            print("⚠️  ALCHEMY_RPC not configured — on-chain balance fetch disabled")
         # No CoinGecko key — pricing is oracle-only
         self.price_cache: Dict[str, Decimal] = {}
         self.price_cache_time = None
 
     async def _jsonrpc(self, payload: dict) -> Tuple[Optional[dict], Optional[str]]:
         """POST JSON-RPC to first endpoint that returns valid JSON with optional result or error object."""
+        if not self._rpc_available:
+            return None, "ALCHEMY_RPC not configured"
         import ssl as _ssl
         ssl_ctx = _ssl.create_default_context()
         try:
@@ -180,9 +183,24 @@ class BalanceAggregator:
     async def fetch_token_prices(self) -> Dict[str, Decimal]:
         """
         Fetch current ETH/USD price from the Chainlink oracle via Alchemy.
-        Stablecoins are always $1 — no oracle call needed.
-        Caches for 5 minutes. No CoinGecko. No external market APIs.
+        Falls back to live_prices.py if Alchemy is not configured.
+        Stablecoins are always $1.
         """
+        # If no RPC, use live_prices.py (CryptoCompare/Binance/Kraken fallback)
+        if not self._rpc_available:
+            try:
+                from services.live_prices import get_live_prices
+                live = get_live_prices()
+                if live:
+                    prices = {k: Decimal(str(v)) for k, v in live.items()}
+                    self.price_cache = prices
+                    from datetime import datetime, timezone
+                    self.price_cache_time = datetime.now(timezone.utc)
+                    return prices
+            except Exception:
+                pass
+            return {sym: Decimal("1") for sym in STABLECOINS}
+
         now = datetime.now(timezone.utc)
         if self.price_cache_time and (now - self.price_cache_time).total_seconds() < 300:
             return self.price_cache
@@ -502,7 +520,9 @@ class BalanceAggregator:
                 print(f"Warning: address portfolio_history insert failed: {e}")
 
     async def update_address(self, address: str):
-        """Update balances for a single address."""
+        """Update balances for a single address (no-op if RPC not configured)."""
+        if not self._rpc_available:
+            return
         print(f"\n📊 Updating balances for {address}")
         balances = await self.fetch_address_balances(address)
         await self.save_balances_to_db(balances)

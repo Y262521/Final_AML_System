@@ -283,39 +283,74 @@ async def _fetch_integration_stage(entity_id: str, addresses: list[str]) -> dict
 
 async def _fetch_neo4j_path(entity_id: str, addresses: list[str]) -> list[dict]:
     """
-    Query Neo4j for TRANSFER edges involving this entity's addresses.
-    Returns a list of {source, target, value_eth, tx_hash} for graph rendering.
+    Return transaction edges for this entity.
+    Tries Neo4j first (EVM), then falls back to MySQL for all chains.
     """
     driver = get_driver()
-    if not driver:
+    if driver and any(a.startswith('0x') for a in addresses):
+        try:
+            addr_list = [a for a in addresses if a.startswith('0x')][:20]
+            async with driver.session() as session:
+                result = await session.run(
+                    """
+                    MATCH (s:Address)-[rel:TRANSFER]->(r:Address)
+                    WHERE s.address IN $addrs OR r.address IN $addrs
+                    RETURN s.address AS source, r.address AS target,
+                           COALESCE(rel.value_eth, rel.amount, 0) AS value_eth,
+                           COALESCE(rel.tx_hash, rel.hash, '') AS tx_hash,
+                           rel.block_number AS block_number
+                    LIMIT 200
+                    """,
+                    addrs=addr_list,
+                )
+                edges = []
+                async for r in result:
+                    edges.append({
+                        "source": r["source"],
+                        "target": r["target"],
+                        "value_eth": float(r["value_eth"] or 0),
+                        "tx_hash": r["tx_hash"] or "",
+                        "block_number": r["block_number"],
+                    })
+                if edges:
+                    return edges
+        except Exception as exc:
+            logger.warning("Neo4j path query failed: %s", exc)
+
+    # MySQL fallback — works for all chains
+    if not get_pool():
         return []
     try:
-        addr_list = addresses[:20]  # cap to avoid huge queries
-        async with driver.session() as session:
-            result = await session.run(
-                """
-                MATCH (s:Address)-[rel:TRANSFER]->(r:Address)
-                WHERE s.address IN $addrs OR r.address IN $addrs
-                RETURN s.address AS source, r.address AS target,
-                       COALESCE(rel.value_eth, rel.amount, 0) AS value_eth,
-                       COALESCE(rel.tx_hash, rel.hash, '') AS tx_hash,
-                       rel.block_number AS block_number
-                LIMIT 200
-                """,
-                addrs=addr_list,
-            )
-            edges = []
-            async for r in result:
-                edges.append({
-                    "source": r["source"],
-                    "target": r["target"],
-                    "value_eth": float(r["value_eth"] or 0),
-                    "tx_hash": r["tx_hash"] or "",
-                    "block_number": r["block_number"],
-                })
-            return edges
+        placeholders = ", ".join(["%s"] * len(addresses))
+        rows = await fetch_all(
+            f"""
+            SELECT from_address AS source, to_address AS target,
+                   value_eth, tx_hash,
+                   block_number,
+                   COALESCE(native_asset, 'ETH') AS native_asset,
+                   COALESCE(chain_name, 'ethereum') AS chain_name
+            FROM transactions
+            WHERE LOWER(from_address) IN ({placeholders})
+               OR LOWER(to_address)   IN ({placeholders})
+            ORDER BY block_number DESC
+            LIMIT 200
+            """,
+            tuple(addresses + addresses),
+        )
+        return [
+            {
+                "source": r.get("source"),
+                "target": r.get("target"),
+                "value_eth": float(r.get("value_eth") or 0),
+                "tx_hash": r.get("tx_hash") or "",
+                "block_number": r.get("block_number"),
+                "native_asset": r.get("native_asset") or "ETH",
+                "chain": r.get("chain_name") or "ethereum",
+            }
+            for r in (rows or [])
+        ]
     except Exception as exc:
-        logger.warning("Neo4j path query failed: %s", exc)
+        logger.warning("MySQL path fallback failed: %s", exc)
         return []
 
 
@@ -398,14 +433,26 @@ async def post_integration_feedback(entity_id: str, payload: dict):
         """
         SELECT pd.run_id, pd.entity_id, pd.placement_score
         FROM placement_detections pd
-        JOIN placement_entity_addresses pea
-          ON pea.run_id = pd.run_id AND pea.entity_id = pd.entity_id
-        WHERE pea.address = %s OR pd.entity_id = %s
+        WHERE pd.entity_id = %s
         ORDER BY pd.placement_score DESC
         LIMIT 1
         """,
-        (entity_id, entity_id),
+        (entity_id,),
     )
+    if not placement_row:
+        # Try via address membership
+        placement_row = await fetch_one(
+            """
+            SELECT pd.run_id, pd.entity_id, pd.placement_score
+            FROM placement_detections pd
+            JOIN placement_entity_addresses pea
+              ON pea.run_id = pd.run_id AND pea.entity_id = pd.entity_id
+            WHERE pea.address = %s
+            ORDER BY pd.placement_score DESC
+            LIMIT 1
+            """,
+            (entity_id,),
+        )
 
     if not placement_row:
         return {"status": "no_placement_found", "entity_id": entity_id}
@@ -417,7 +464,7 @@ async def post_integration_feedback(entity_id: str, payload: dict):
 
     # Write feedback label to placement_labels
     try:
-        await fetch_all(
+        await fetch_one(
             """
             INSERT INTO placement_labels
                 (run_id, entity_id, entity_type, label, label_source, confidence_score, explanation)

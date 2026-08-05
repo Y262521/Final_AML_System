@@ -64,9 +64,24 @@ def _stale(updated_at, seconds: int = 3600) -> bool:
 
 
 async def _get_current_prices() -> dict:
-    agg = get_aggregator()
-    prices = await agg.fetch_token_prices()
-    return {k: Decimal(str(v)) for k, v in prices.items()}
+    """Get current token prices — live_prices.py first (fast), oracle fallback."""
+    try:
+        from services.live_prices import get_live_prices
+        live = get_live_prices()
+        if live:
+            return {k: Decimal(str(v)) for k, v in live.items()}
+    except Exception:
+        pass
+    # Try aggregator in-memory cache
+    try:
+        agg = get_aggregator()
+        if agg.price_cache:
+            return {k: Decimal(str(v)) for k, v in agg.price_cache.items()}
+        prices = await agg.fetch_token_prices()
+        return {k: Decimal(str(v)) for k, v in prices.items()}
+    except Exception:
+        pass
+    return {}
 
 
 async def _get_address_balances(address: str) -> dict:
@@ -77,7 +92,6 @@ async def _get_address_balances(address: str) -> dict:
         (address.lower(),),
     ) or []
     return {r["token_symbol"]: Decimal(str(r["balance"] or 0)) for r in rows}
-
 
 async def _get_entity_label(address: str) -> str:
     """Derive a human-readable entity label from cluster/owner data."""
@@ -130,23 +144,30 @@ async def get_address_mvrv(
     addr = address.lower()
     acct = _validate_method(method)
 
-    # Refresh on-chain balances if stale (>1 h)
+    # Use cached balances from DB — do NOT make on-chain calls on every page load.
+    # On-chain refresh only happens via the POST /refresh/{address} endpoint.
     latest_row = await fetch_one(
         "SELECT MAX(updated_at) AS u FROM wallet_balances WHERE address = %s", (addr,)
     )
     latest_u = (latest_row or {}).get("u")
-    if _stale(latest_u):
-        await get_aggregator().update_address(addr)
-        latest_row = await fetch_one(
-            "SELECT MAX(updated_at) AS u FROM wallet_balances WHERE address = %s", (addr,)
-        )
-        latest_u = (latest_row or {}).get("u")
 
     current_balances = await _get_address_balances(addr)
     current_prices   = await _get_current_prices()
 
-    mvrv = await compute_mvrv_for_address(addr, current_prices, current_balances, acct)
-    await save_mvrv_snapshot(addr, "address", mvrv)
+    try:
+        mvrv = await compute_mvrv_for_address(addr, current_prices, current_balances, acct)
+    except Exception as exc:
+        logger = __import__('logging').getLogger(__name__)
+        logger.warning("compute_mvrv_for_address failed for %s: %s", addr, exc)
+        mvrv = {"market_value_usd": 0.0, "realized_value_usd": 0.0, "mvrv_ratio": 0.0,
+                "unrealized_pnl_usd": 0.0, "unrealized_pnl_pct": 0.0,
+                "realized_pnl_usd": 0.0, "net_pnl_usd": 0.0,
+                "tx_count_in": 0, "tx_count_out": 0, "tx_count_total": 0,
+                "cost_basis_per_token": {}, "accounting_method": acct, "cost_basis_available": False}
+    try:
+        await save_mvrv_snapshot(addr, "address", mvrv)
+    except Exception:
+        pass
 
     asset_rows = await fetch_all(
         """
@@ -240,24 +261,28 @@ async def get_cluster_mvrv(
     if not addresses:
         return _empty_cluster_response(cluster_id, acct)
 
-    agg = get_aggregator()
-    stale = []
-    for addr in addresses:
-        row = await fetch_one(
-            "SELECT MAX(updated_at) AS u FROM wallet_balances WHERE address = %s", (addr,)
-        )
-        if _stale((row or {}).get("u")):
-            stale.append(addr)
-    if stale:
-        await asyncio.gather(*[agg.update_address(a) for a in stale], return_exceptions=True)
+    # DO NOT make on-chain RPC calls on every page load — that causes the
+    # multi-second hang. Use whatever is already in wallet_balances (may be 0).
+    # The /refresh endpoint is the only place that triggers on-chain fetches.
 
     current_prices   = await _get_current_prices()
     balances_by_addr = {addr: await _get_address_balances(addr) for addr in addresses}
 
-    mvrv = await compute_mvrv_for_cluster(
-        cluster_id, addresses, current_prices, balances_by_addr, acct
-    )
-    await save_mvrv_snapshot(cluster_id, "cluster", mvrv)
+    try:
+        mvrv = await compute_mvrv_for_cluster(
+            cluster_id, addresses, current_prices, balances_by_addr, acct
+        )
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("compute_mvrv_for_cluster failed %s: %s", cluster_id, exc)
+        mvrv = {"market_value_usd": 0.0, "realized_value_usd": 0.0, "mvrv_ratio": 0.0,
+                "unrealized_pnl_usd": 0.0, "unrealized_pnl_pct": 0.0,
+                "realized_pnl_usd": 0.0, "net_pnl_usd": 0.0, "tx_count_total": 0,
+                "wallet_count": len(addresses), "cost_basis_per_token": {}, "accounting_method": acct}
+    try:
+        await save_mvrv_snapshot(cluster_id, "cluster", mvrv)
+    except Exception:
+        pass
 
     placeholders = ",".join(["%s"] * len(addresses))
     asset_rows = await fetch_all(

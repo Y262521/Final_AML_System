@@ -33,9 +33,9 @@ async function _post(url, body = {}) {
 
 /**
  * Get latest transactions (feed).
- * @param {{ limit?: number, offset?: number, sortBy?: 'amount_desc' | 'latest', chain?: string }} opts
+ * @param {{ limit?: number, offset?: number, sortBy?: 'value_usd_desc' | 'amount_desc' | 'latest', chain?: string }} opts
  */
-export const getLatestTransactions = ({ limit = 200, offset = 0, sortBy = 'amount_desc', chain } = {}) => {
+export const getLatestTransactions = ({ limit = 200, offset = 0, sortBy = 'value_usd_desc', chain } = {}) => {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset), sort_by: sortBy });
   if (chain && chain !== 'all') params.set('chain', chain);
   // Use explicit trailing slash to match FastAPI route and avoid 307 redirect
@@ -44,12 +44,13 @@ export const getLatestTransactions = ({ limit = 200, offset = 0, sortBy = 'amoun
 
 /**
  * Get graph data for visualization.
- * @param {{ search?: string, center?: string, hops?: number, maxEdges?: number, minValue?: number }} opts
+ * @param {{ search?: string, center?: string, hops?: number, maxEdges?: number, minValue?: number, chain?: string }} opts
  */
-export const getGraphData = ({ search, center, hops = 2, maxEdges = 300, minValue = 0 } = {}) => {
+export const getGraphData = ({ search, center, hops = 2, maxEdges = 300, minValue = 0, chain } = {}) => {
   const params = new URLSearchParams({ hops: String(hops), max_edges: String(maxEdges), min_value: String(minValue) });
   if (search) params.set('search', search);
   if (center) params.set('center', center);
+  if (chain && chain !== 'all') params.set('chain', chain);
   return _get(`${API_BASE}/transactions/graph?${params}`);
 };
 
@@ -101,7 +102,7 @@ export async function getCluster(clusterId) {
  * Create or update owner list entry.
  * @param {object} ownerData - Owner information with addresses
  */
-export const createOwnerListEntry = (ownerData) => _post(`${API_BASE}/clusters/owner`, ownerData);
+export const createOwnerListEntry = (ownerData) => _post(`${API_BASE}/clusters/owner-list`, ownerData);
 
 // ── Placement ───────────────────────────────────────────────────────────────────
 
