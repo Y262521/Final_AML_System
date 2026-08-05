@@ -159,11 +159,23 @@ async def get_address_mvrv(
     except Exception as exc:
         logger = __import__('logging').getLogger(__name__)
         logger.warning("compute_mvrv_for_address failed for %s: %s", addr, exc)
-        mvrv = {"market_value_usd": 0.0, "realized_value_usd": 0.0, "mvrv_ratio": 0.0,
-                "unrealized_pnl_usd": 0.0, "unrealized_pnl_pct": 0.0,
-                "realized_pnl_usd": 0.0, "net_pnl_usd": 0.0,
-                "tx_count_in": 0, "tx_count_out": 0, "tx_count_total": 0,
-                "cost_basis_per_token": {}, "accounting_method": acct, "cost_basis_available": False}
+        # Keep None for cost-basis fields — unknown ≠ zero (matches compute_mvrv_for_address contract)
+        mvrv = {
+            "market_value_usd":     0.0,
+            "realized_value_usd":   None,
+            "mvrv_ratio":           None,
+            "unrealized_pnl_usd":   None,
+            "unrealized_pnl_pct":   None,
+            "realized_pnl_usd":     None,
+            "net_pnl_usd":          None,
+            "tx_count_in":          0,
+            "tx_count_out":         0,
+            "tx_count_total":       0,
+            "cost_basis_per_token": {},
+            "accounting_method":    acct,
+            "cost_basis_available": False,
+            "history_complete":     False,
+        }
     try:
         await save_mvrv_snapshot(addr, "address", mvrv)
     except Exception:
@@ -189,15 +201,20 @@ async def get_address_mvrv(
         sym    = r["token_symbol"]
         cb     = mvrv["cost_basis_per_token"].get(sym, {})
         mv_usd = float(r["balance_usd"] or 0)
+        # avg_cost_basis_usd / unrealized_pnl_usd / realized_pnl_usd can be None
+        # when cost basis is unknown — propagate None so the frontend shows "—"
+        raw_cb   = cb.get("avg_cost_basis_usd")
+        raw_upnl = cb.get("unrealized_pnl_usd")
+        raw_rpnl = cb.get("realized_pnl_usd")
         assets.append({
             "token_symbol":       sym,
             "token_contract":     r.get("token_contract") or None,
             "balance":            float(r["balance"] or 0),
             "current_price_usd":  float(current_prices.get(sym, Decimal("0"))),
             "market_value_usd":   mv_usd,
-            "cost_basis_usd":     float(cb.get("avg_cost_basis_usd", 0)),
-            "unrealized_pnl_usd": float(cb.get("unrealized_pnl_usd", 0)),
-            "realized_pnl_usd":   float(cb.get("realized_pnl_usd", 0)),
+            "cost_basis_usd":     float(raw_cb)   if raw_cb   is not None else None,
+            "unrealized_pnl_usd": float(raw_upnl) if raw_upnl is not None else None,
+            "realized_pnl_usd":   float(raw_rpnl) if raw_rpnl is not None else None,
             "portfolio_percent":  round(mv_usd / total_mv * 100, 2) if total_mv > 0 else 0,
         })
 
@@ -275,10 +292,21 @@ async def get_cluster_mvrv(
     except Exception as exc:
         import logging
         logging.getLogger(__name__).warning("compute_mvrv_for_cluster failed %s: %s", cluster_id, exc)
-        mvrv = {"market_value_usd": 0.0, "realized_value_usd": 0.0, "mvrv_ratio": 0.0,
-                "unrealized_pnl_usd": 0.0, "unrealized_pnl_pct": 0.0,
-                "realized_pnl_usd": 0.0, "net_pnl_usd": 0.0, "tx_count_total": 0,
-                "wallet_count": len(addresses), "cost_basis_per_token": {}, "accounting_method": acct}
+        # Keep None for cost-basis fields — unknown ≠ zero
+        mvrv = {
+            "market_value_usd":     0.0,
+            "realized_value_usd":   None,
+            "mvrv_ratio":           None,
+            "unrealized_pnl_usd":   None,
+            "unrealized_pnl_pct":   None,
+            "realized_pnl_usd":     None,
+            "net_pnl_usd":          None,
+            "tx_count_total":       0,
+            "wallet_count":         len(addresses),
+            "cost_basis_per_token": {},
+            "accounting_method":    acct,
+            "cost_basis_available": False,
+        }
     try:
         await save_mvrv_snapshot(cluster_id, "cluster", mvrv)
     except Exception:
@@ -352,11 +380,19 @@ async def get_cluster_mvrv(
 
 def _empty_cluster_response(cluster_id: str, method: str = "FIFO") -> dict:
     z = {
-        "market_value_usd": 0, "realized_value_usd": 0, "mvrv_ratio": 1.0,
-        "unrealized_pnl_usd": 0, "unrealized_pnl_pct": 0,
-        "realized_pnl_usd": 0, "net_pnl_usd": 0,
-        "tx_count_in": 0, "tx_count_out": 0, "tx_count_total": 0,
-        "cost_basis_per_token": {}, "accounting_method": method,
+        "market_value_usd":     0.0,
+        "realized_value_usd":   None,   # unknown — no data
+        "mvrv_ratio":           None,   # not 1.0 — that would imply break-even
+        "unrealized_pnl_usd":   None,
+        "unrealized_pnl_pct":   None,
+        "realized_pnl_usd":     None,
+        "net_pnl_usd":          None,
+        "tx_count_in":          0,
+        "tx_count_out":         0,
+        "tx_count_total":       0,
+        "cost_basis_per_token": {},
+        "accounting_method":    method,
+        "cost_basis_available": False,
     }
     return {
         "cluster_id": cluster_id, "mvrv": z,
