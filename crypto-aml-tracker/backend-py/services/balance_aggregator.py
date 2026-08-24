@@ -60,13 +60,19 @@ _LATEST_ROUND_DATA_SELECTOR = "0xfeaf968c"
 
 def _collect_rpc_urls() -> List[str]:
     """
-    Return the single Alchemy RPC URL from environment.
-    Returns empty list if not configured — callers must handle this gracefully.
+    Return candidate RPC URLs from environment (ALCHEMY_RPC, RPC_URL, ETH_RPC_URL).
+    Skips empty or /v2/demo placeholder endpoints.
     """
-    url = (os.getenv("ALCHEMY_RPC") or "").strip()
-    if not url or "/v2/demo" in url.lower():
-        return []
-    return [url]
+    candidates = [
+        (os.getenv("ALCHEMY_RPC") or "").strip(),
+        (os.getenv("RPC_URL") or "").strip(),
+        (os.getenv("ETH_RPC_URL") or "").strip(),
+    ]
+    urls = []
+    for url in candidates:
+        if url and "/v2/demo" not in url.lower() and url not in urls:
+            urls.append(url)
+    return urls
 
 
 class BalanceAggregator:
@@ -77,10 +83,10 @@ class BalanceAggregator:
         self.rpc_urls = urls
         self._rpc_available = bool(urls)
         if urls:
-            preview = urls[0][:56] + "…" if len(urls[0]) > 56 else urls[0]
-            print(f"🔗 Alchemy RPC: {preview}")
+            preview = urls[0][:56] + "..." if len(urls[0]) > 56 else urls[0]
+            print(f"[Alchemy RPC] {preview}")
         else:
-            print("⚠️  ALCHEMY_RPC not configured — on-chain balance fetch disabled")
+            print("[WARN] ALCHEMY_RPC not configured - on-chain balance fetch disabled")
         # No CoinGecko key — pricing is oracle-only
         self.price_cache: Dict[str, Decimal] = {}
         self.price_cache_time = None
@@ -145,16 +151,16 @@ class BalanceAggregator:
         }
         data, err = await self._jsonrpc(payload)
         if err:
-            print(f"  ✗ Error fetching ETH balance for {address}: {err}")
+            print(f"  [!] Error fetching ETH balance for {address}: {err}")
             return Decimal(0)
         try:
             if data and "result" in data:
                 wei_balance = int(data["result"], 16)
                 eth_balance = Decimal(wei_balance) / Decimal(10 ** 18)
-                print(f"  ✓ ETH balance for {address[:10]}…: {eth_balance}")
+                print(f"  [OK] ETH balance for {address[:10]}...: {eth_balance}")
                 return eth_balance
         except Exception as e:
-            print(f"  ✗ Error parsing ETH balance for {address}: {e}")
+            print(f"  [!] Error parsing ETH balance for {address}: {e}")
         return Decimal(0)
     
     async def fetch_erc20_balance(self, address: str, token_contract: str, decimals: int) -> Decimal:
@@ -255,18 +261,18 @@ class BalanceAggregator:
                         if Decimal("1") < eth_price < Decimal("1000000"):
                             prices["ETH"]  = eth_price
                             prices["WETH"] = eth_price
-                            print(f"  ✓ ETH/WETH: ${eth_price:.2f} (Chainlink oracle)")
+                            print(f"  [OK] ETH/WETH: ${eth_price:.2f} (Chainlink oracle)")
                         else:
-                            print(f"  ✗ Chainlink price out of range: {eth_price}")
+                            print(f"  [!] Chainlink price out of range: {eth_price}")
                     else:
-                        print("  ✗ Chainlink returned non-positive answer")
+                        print("  [!] Chainlink returned non-positive answer")
                 else:
-                    print("  ✗ Chainlink response too short to decode")
+                    print("  [!] Chainlink response too short to decode")
             else:
-                print("  ✗ Chainlink oracle returned empty result")
+                print("  [!] Chainlink oracle returned empty result")
 
         except Exception as exc:
-            print(f"  ✗ Chainlink price fetch error: {exc}")
+            print(f"  [!] Chainlink price fetch error: {exc}")
             # Try loading from DB cache as last resort (still oracle data, just stale)
             cached = await self.load_prices_from_db()
             if cached.get("ETH", Decimal(0)) > 0:
@@ -480,7 +486,7 @@ class BalanceAggregator:
                                 print(f"Warning: cluster portfolio_history insert failed: {hist_e}")
                         
                         await conn.commit()
-                        print(f"✓ Aggregated portfolio for cluster {cluster_id}: ${result['total_value_usd']:.2f}")
+                        print(f"[OK] Aggregated portfolio for cluster {cluster_id}: ${result['total_value_usd']:.2f}")
         
         except Exception as e:
             print(f"Error aggregating cluster portfolio: {e}")
@@ -523,14 +529,14 @@ class BalanceAggregator:
         """Update balances for a single address (no-op if RPC not configured)."""
         if not self._rpc_available:
             return
-        print(f"\n📊 Updating balances for {address}")
+        print(f"\n[*] Updating balances for {address}")
         balances = await self.fetch_address_balances(address)
         await self.save_balances_to_db(balances)
         await self.record_address_portfolio_snapshot(address, balances)
         
         # Show summary
         total_usd = sum(float(b['balance_usd']) for b in balances)
-        print(f"✓ Updated balances for {address}: ${total_usd:.2f} total value")
+        print(f"[OK] Updated balances for {address}: ${total_usd:.2f} total value")
     
     async def update_cluster(self, cluster_id: str, addresses: List[str]):
         """Update balances for all addresses in a cluster and aggregate."""

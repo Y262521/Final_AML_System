@@ -19,7 +19,7 @@ from ...config import Config
 from .base_heuristic import BaseHeuristic, ClusterEdge
 
 _MIN_HIGH_OVERLAP_SHARED = 2
-_MIN_JACCARD_OVERLAP = 0.75
+_MIN_JACCARD_OVERLAP = 0.60
 
 
 class BehavioralSimilarityHeuristic(BaseHeuristic):
@@ -34,15 +34,22 @@ class BehavioralSimilarityHeuristic(BaseHeuristic):
         self.min_shared = cfg.clustering_min_shared_counterparties
 
     def find_links(self, G: nx.MultiDiGraph) -> List[ClusterEdge]:
-        # Build counterparty sets per address (union of out-neighbours + in-neighbours)
+        # Compute node degrees to filter out high-degree public hubs/routers
+        node_degrees = dict(G.degree())
+        max_hub_degree = getattr(self.cfg, "clustering_max_service_degree", 15)
+
+        # Build counterparty sets per address (excluding public high-degree hubs)
         counterparties: dict[str, set] = defaultdict(set)
         for u, v, data in G.edges(data=True):
             if not self.is_meaningful_edge(data, allow_contract=True):
                 continue
             if u == v:
                 continue
-            counterparties[u].add(v)
-            counterparties[v].add(u)
+            # Only count distinctive non-hub counterparties
+            if node_degrees.get(v, 0) <= max_hub_degree:
+                counterparties[u].add(v)
+            if node_degrees.get(u, 0) <= max_hub_degree:
+                counterparties[v].add(u)
 
         shared_counts: dict[ClusterEdge, int] = defaultdict(int)
         counterparty_index: dict[str, list[str]] = defaultdict(list)
@@ -79,3 +86,4 @@ class BehavioralSimilarityHeuristic(BaseHeuristic):
                 links.append(pair)
 
         return links
+

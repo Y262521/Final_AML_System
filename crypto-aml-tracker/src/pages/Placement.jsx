@@ -114,12 +114,14 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
             })
             .catch(() => { });
     }, []);
-
     useEffect(() => {
         setLoading(true);
         // Extract date part from datetime-local input (YYYY-MM-DD)
         const beforeDate = dateTimeInput ? dateTimeInput.slice(0, 10) : null;
-        Promise.all([getPlacementSummary(), getPlacements({ runId: selectedRunId || undefined, beforeDate, limit: 5000 })])
+        Promise.all([
+            getPlacementSummary({ runId: selectedRunId || undefined, beforeDate }),
+            getPlacements({ runId: selectedRunId || undefined, beforeDate, limit: 5000 })
+        ])
             .then(([s, l]) => {
                 setSummary(s);
                 setAlerts(l.items || []);
@@ -146,7 +148,7 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
             // closest = last in list (runs are sorted newest first, so first candidate is closest)
             setSelectedRunId(candidates[0].id);
         } else {
-            // All runs are after the picked time � use the oldest
+            // All runs are after the picked time - use the oldest
             setSelectedRunId(runs[runs.length - 1].id);
         }
     };
@@ -169,6 +171,9 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
     if (error) return <div style={{ color: '#b33a3a', padding: '1rem' }}>Error: {error}</div>;
 
     const summaryBody = summary?.summary || {};
+    const totalBehaviorHits = (summaryBody.behaviors && Object.keys(summaryBody.behaviors).length > 0)
+        ? Object.values(summaryBody.behaviors).reduce((t, c) => t + Number(c || 0), 0)
+        : alerts.reduce((t, a) => t + (a.all_behaviors || a.behaviors || []).filter((b) => b && !_BANNED.has(String(b).toLowerCase())).length, 0);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -185,8 +190,8 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
             {/* Summary cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
                 {[
-                    { label: 'Placement Alerts', value: formatNumber(summaryBody.placements || 0, 0), icon: '📍', tone: 'danger', sub: 'Entities above threshold' },
-                    { label: 'Behavior Hits', value: formatNumber(Object.values(summaryBody.behaviors || {}).reduce((t, c) => t + Number(c || 0), 0), 0), icon: '⚠️', tone: 'warning', sub: 'Structuring · Smurfing · Micro-funding · Velocity Burst' },
+                    { label: 'Placement Alerts', value: formatNumber(summaryBody.placements || alerts.length || 0, 0), icon: '📍', tone: 'danger', sub: 'Entities above threshold' },
+                    { label: 'Behavior Hits', value: formatNumber(Object.values(summaryBody.behaviors || {}).reduce((t, c) => t + Number(c || 0), 0) || (typeof totalBehaviorHits !== 'undefined' ? totalBehaviorHits : 0), 0), icon: '⚠️', tone: 'warning', sub: 'Structuring · Smurfing · Micro-funding · Velocity Burst' },
                     { label: 'Filtered Alerts', value: formatNumber(filteredAlerts.length, 0), icon: '🔍', tone: 'accent', sub: 'Matching current filters' },
                 ].map(({ label, value, icon, tone, sub }) => {
                     const c = { danger: { bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.25)', text: '#F87171', num: '#F87171' }, warning: { bg: 'rgba(251,191,36,0.10)', border: 'rgba(251,191,36,0.25)', text: '#FBBF24', num: '#FBBF24' }, accent: { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.25)', text: '#60A5FA', num: '#60A5FA' } }[tone];

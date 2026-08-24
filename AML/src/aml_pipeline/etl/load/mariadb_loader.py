@@ -37,6 +37,7 @@ UTF8MB4_TABLES = (
     "owner_list",
     "owner_list_addresses",
     "wallet_clusters",
+    "wallet_labels",
     "transactions",
     "addresses",
     "cluster_evidence",
@@ -511,6 +512,7 @@ def _prepare_transaction_chunk(chunk: pd.DataFrame, chain_name: str = "ethereum"
 def load_utxo_pairs_to_mariadb(
     cfg: Optional[Config] = None,
     chain_name: str = "bitcoin",
+    refresh_addresses: bool = True,
 ) -> dict:
     """
     Load UTXO input→output pairs (and Solana transfers) from MongoDB flat_transactions
@@ -633,9 +635,10 @@ def load_utxo_pairs_to_mariadb(
         )
         client.close()
 
-        # Refresh addresses table
-        _ensure_address_columns(engine, cfg)
-        _refresh_addresses(engine, cfg)
+        # Refresh addresses table if requested
+        if refresh_addresses:
+            _ensure_address_columns(engine, cfg)
+            _refresh_addresses(engine, cfg)
 
         logger.info(
             "UTXO load complete: chain=%s  rows_loaded=%d",
@@ -813,6 +816,7 @@ def load_to_mariadb(
     chunk_size: int | None = None,
     limit: int | None = None,
     chain_name: str = "ethereum",
+    refresh_addresses: bool = True,
 ) -> dict:
     """Load processed CSV files into MariaDB with idempotent upserts."""
     cfg = cfg or load_config()
@@ -845,8 +849,9 @@ def load_to_mariadb(
                 if tx_rows_remaining <= 0:
                     break
 
-        _ensure_address_columns(engine, cfg)
-        _refresh_addresses(engine, cfg)
+        if refresh_addresses:
+            _ensure_address_columns(engine, cfg)
+            _refresh_addresses(engine, cfg)
         summary["transactions_total"] = _count_rows(engine, "transactions")
         summary["addresses_total"] = _count_rows(engine, "addresses")
     finally:
@@ -859,6 +864,17 @@ def load_to_mariadb(
         summary["rows_skipped"],
     )
     return summary
+
+
+def refresh_mariadb_addresses(cfg: Optional[Config] = None) -> None:
+    """Explicitly refresh the MariaDB addresses table from all transactions (run once after batch loads)."""
+    cfg = cfg or load_config()
+    engine = get_maria_engine(cfg)
+    try:
+        _ensure_address_columns(engine, cfg)
+        _refresh_addresses(engine, cfg)
+    finally:
+        engine.dispose()
 
 
 def test_small_load(cfg: Config | None = None) -> dict:

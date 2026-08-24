@@ -63,7 +63,7 @@ class CommonInputOwnershipHeuristic(BaseHeuristic):
         """Heuristic CoinJoin detection — avoids false-positive clusters."""
         if len(inputs) >= self.max_inputs:
             return True
-        if len(output_values) < 2:
+        if len(inputs) < 5 or len(output_values) < 5:
             return False
         avg = sum(output_values) / len(output_values)
         if avg <= 0:

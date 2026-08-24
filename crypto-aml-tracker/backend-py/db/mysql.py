@@ -58,3 +58,12 @@ async def fetch_one(sql: str, args=None) -> dict | None:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute(sql, args or ())
             return await cur.fetchone()
+
+
+async def execute_write(sql: str, args=None) -> int:
+    """Execute an INSERT/UPDATE/DELETE statement and return affected rows."""
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(sql, args or ())
+            return cur.rowcount
+

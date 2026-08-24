@@ -579,6 +579,66 @@ async def get_owner_by_address(address: str):
     }
 
 
+@router.get("/labels/all")
+async def get_all_cluster_labels():
+    """Pull all owner labels and address associations directly from the database."""
+    _require_mysql()
+    try:
+        rows = await fetch_all(
+            """
+            SELECT o.id AS owner_id,
+                   o.full_name,
+                   o.entity_type,
+                   o.list_category,
+                   o.country,
+                   o.city,
+                   ola.blockchain_network,
+                   ola.address,
+                   ola.is_primary,
+                   a.cluster_id,
+                   wc.label_status,
+                   wc.risk_level
+            FROM owner_list o
+            JOIN owner_list_addresses ola ON ola.owner_list_id = o.id
+            LEFT JOIN addresses a ON a.address = ola.address
+            LEFT JOIN wallet_clusters wc ON wc.id = a.cluster_id
+            ORDER BY o.full_name ASC, ola.is_primary DESC
+            """
+        )
+        return {"total": len(rows), "labels": [dict(r) for r in rows]}
+    except Exception as e:
+        logger.error(f"Error fetching cluster labels: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sync-labels-from-db")
+async def sync_cluster_labels_from_db():
+    """
+    Pulls labels directly from the database (wallet_labels & owner_list)
+    and automatically relabels all matching wallet clusters in MariaDB/MySQL.
+    """
+    _require_mysql()
+    try:
+        cfg = _load_aml_config()
+        from aml_pipeline.clustering.owner_registry import relabel_clusters, sync_database_labels
+
+        # First ensure database labels are synced
+        sync_res = await asyncio.to_thread(sync_database_labels, cfg=cfg)
+        
+        # Relabel all clusters from database
+        relabel_res = await asyncio.to_thread(relabel_clusters, cfg=cfg)
+
+        return {
+            "status": "ok",
+            "message": f"Successfully pulled labels from database. Relabeled {relabel_res.get('clusters_relabelled', 0)} clusters.",
+            "sync_details": sync_res,
+            "relabel_details": relabel_res,
+        }
+    except Exception as exc:
+        logger.error(f"Failed to sync labels from DB: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to sync labels from database: {exc}") from exc
+
+
 @router.get("/{cluster_id}")
 async def get_cluster(cluster_id: str):
     """Return full cluster details (addresses, activity, evidence) for a single cluster."""
@@ -618,3 +678,4 @@ async def get_cluster(cluster_id: str):
         activity_map=activity_map,
         evidence_map=evidence_map,
     )
+

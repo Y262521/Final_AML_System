@@ -52,6 +52,22 @@ CREATE TABLE IF NOT EXISTS wallet_clusters (
         ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS wallet_labels (
+    address VARCHAR(64) PRIMARY KEY,
+    label VARCHAR(32) NOT NULL,
+    category VARCHAR(64) NULL,
+    name VARCHAR(255) NULL,
+    chain VARCHAR(64) NOT NULL DEFAULT 'ethereum',
+    description TEXT NULL,
+    source VARCHAR(64) NOT NULL DEFAULT 'database',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_wallet_labels_label (label),
+    KEY idx_wallet_labels_category (category),
+    KEY idx_wallet_labels_chain (chain),
+    KEY idx_wallet_labels_source (source)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS transactions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     tx_hash VARCHAR(128) NOT NULL,

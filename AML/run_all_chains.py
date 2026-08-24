@@ -1,6 +1,6 @@
 """
-Master multi-chain ETL + AML engine runner.
-Fetches blocks from every supported chain, loads to MySQL,
+Master multi-chain ETL + AML engine runner (High-Performance Parallel Edition).
+Fetches blocks from every supported chain concurrently, loads to MySQL,
 then runs clustering, placement, layering, and integration
 engines per-chain so every alert gets the correct chain_name.
 
@@ -10,6 +10,9 @@ Chains:
   Account: solana
 """
 import sys, os, time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+
 if hasattr(sys.stdout, 'reconfigure'):
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -20,7 +23,7 @@ if hasattr(sys.stderr, 'reconfigure'):
         sys.stderr.reconfigure(encoding='utf-8')
     except Exception:
         pass
-from pathlib import Path
+
 base_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(base_dir / 'src'))
 from dotenv import load_dotenv
@@ -31,6 +34,8 @@ from aml_pipeline.config import load_config
 from aml_pipeline.etl.load.mariadb_loader import (
     create_tables_if_not_exist,
     load_utxo_pairs_to_mariadb,
+    load_to_mariadb,
+    refresh_mariadb_addresses,
 )
 from aml_pipeline.utils.connections import get_maria_engine
 from sqlalchemy import text
@@ -41,77 +46,95 @@ create_tables_if_not_exist(cfg)
 results = {}
 ok_chains = []   # chains that actually extracted data
 
-# ── EVM chains ────────────────────────────────────────────────────────────────
 EVM_CHAINS = ["ethereum", "bnb", "polygon", "arbitrum", "base"]
-
-print("\n[EVM CHAINS — EXTRACT + LOAD]")
-for chain_name in EVM_CHAINS:
-    print(f"  {chain_name}...", end=" ", flush=True)
-    try:
-        from aml_pipeline.etl.extract.evm import EVMExtractor
-        ext = EVMExtractor(cfg=cfg, chain=chain_name)
-        fb, tb = ext.fetch_and_store_raw(batch=3)
-        results[chain_name] = {"status": "ok", "from": fb, "to": tb}
-        print(f"OK blocks {fb}->{tb}")
-
-        if chain_name == "ethereum":
-            from aml_pipeline.etl.transform.transformer import transform_raw_to_aml
-            t = transform_raw_to_aml(start_block=fb, end_block=tb, cfg=cfg)
-            from aml_pipeline.etl.load.mariadb_loader import load_to_mariadb
-            load_to_mariadb(cfg=cfg, chain_name="ethereum")
-            print(f"    Loaded {t['transactions_created']} ETH txs to MySQL")
-        else:
-            load_utxo_pairs_to_mariadb(cfg=cfg, chain_name=chain_name)
-            print(f"    Loaded to MySQL")
-        ok_chains.append(chain_name)
-    except ConnectionError as e:
-        results[chain_name] = {"status": "no_rpc"}
-        print(f"SKIP (no RPC: {str(e)[:40]})")
-        # Still include ethereum in ok_chains so engines run on existing DB data
-        if chain_name == "ethereum" and chain_name not in ok_chains:
-            ok_chains.append(chain_name)
-            print(f"    (will run ETH engines on existing DB data)")
-    except Exception as e:
-        results[chain_name] = {"status": "error", "error": str(e)[:80]}
-        print(f"ERROR: {str(e)[:80]}")
-        if chain_name == "ethereum" and chain_name not in ok_chains:
-            ok_chains.append(chain_name)
-            print(f"    (will run ETH engines on existing DB data)")
-
-# ── UTXO chains ───────────────────────────────────────────────────────────────
 UTXO_CHAINS = ["bitcoin", "litecoin", "dogecoin", "bitcoin_cash"]
+ALL_CHAINS = EVM_CHAINS + UTXO_CHAINS + ["solana"]
 
-print("\n[UTXO CHAINS — EXTRACT + LOAD]")
-for chain_name in UTXO_CHAINS:
-    print(f"  {chain_name}...", end=" ", flush=True)
+start_time = time.time()
+print("\n" + "=" * 60)
+print("  MULTI-CHAIN PARALLEL EXTRACTION & ETL")
+print("  Extracting: " + ", ".join(ALL_CHAINS))
+print("=" * 60 + "\n")
+
+
+def _extract_and_load_chain(chain_name: str) -> tuple[str, dict]:
+    """Worker function to extract and load a single chain concurrently."""
+    chain_res = {"status": "ok", "from": None, "to": None, "error": None}
     try:
-        from aml_pipeline.etl.extract.utxo import UTXOExtractor
-        ext = UTXOExtractor(cfg=cfg, chain=chain_name)
-        fb, tb = ext.fetch_and_store_raw(batch=3)
-        results[chain_name] = {"status": "ok", "from": fb, "to": tb}
-        print(f"OK blocks {fb}->{tb}")
-        load_utxo_pairs_to_mariadb(cfg=cfg, chain_name=chain_name)
-        print(f"    Loaded to MySQL")
-        ok_chains.append(chain_name)
-    except Exception as e:
-        results[chain_name] = {"status": "error", "error": str(e)[:80]}
-        print(f"ERROR: {str(e)[:80]}")
+        if chain_name in EVM_CHAINS:
+            from aml_pipeline.etl.extract.evm import EVMExtractor
+            ext = EVMExtractor(cfg=cfg, chain=chain_name)
+            fb, tb = ext.fetch_and_store_raw(batch=3)
+            chain_res["from"] = fb
+            chain_res["to"] = tb
 
-# ── Solana ────────────────────────────────────────────────────────────────────
-print("\n[SOLANA — EXTRACT + LOAD]")
-print("  solana...", end=" ", flush=True)
+            if chain_name == "ethereum":
+                from aml_pipeline.etl.transform.transformer import transform_raw_to_aml
+                t = transform_raw_to_aml(start_block=fb, end_block=tb, cfg=cfg)
+                load_to_mariadb(cfg=cfg, chain_name="ethereum", refresh_addresses=False)
+                chain_res["txs"] = t.get("transactions_created", 0)
+            else:
+                load_utxo_pairs_to_mariadb(cfg=cfg, chain_name=chain_name, refresh_addresses=False)
+
+        elif chain_name in UTXO_CHAINS:
+            from aml_pipeline.etl.extract.utxo import UTXOExtractor
+            ext = UTXOExtractor(cfg=cfg, chain=chain_name)
+            fb, tb = ext.fetch_and_store_raw(batch=3)
+            chain_res["from"] = fb
+            chain_res["to"] = tb
+            load_utxo_pairs_to_mariadb(cfg=cfg, chain_name=chain_name, refresh_addresses=False)
+
+        elif chain_name == "solana":
+            from aml_pipeline.etl.extract.solana import SolanaExtractor
+            ext = SolanaExtractor(cfg=cfg)
+            fs, ts_ = ext.fetch_and_store_raw(batch=3)
+            chain_res["from"] = fs
+            chain_res["to"] = ts_
+            load_utxo_pairs_to_mariadb(cfg=cfg, chain_name="solana", refresh_addresses=False)
+
+        return chain_name, chain_res
+
+    except ConnectionError as exc:
+        chain_res["status"] = "no_rpc"
+        chain_res["error"] = str(exc)[:60]
+        return chain_name, chain_res
+    except Exception as exc:
+        chain_res["status"] = "error"
+        chain_res["error"] = str(exc)[:80]
+        return chain_name, chain_res
+
+
+# Execute extraction across all chains in parallel
+max_workers = min(len(ALL_CHAINS), 8)
+print(f"[RUNNING PARALLEL EXTRACTION ({max_workers} WORKERS)]")
+
+with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    future_to_chain = {
+        executor.submit(_extract_and_load_chain, ch): ch
+        for ch in ALL_CHAINS
+    }
+    for fut in as_completed(future_to_chain):
+        ch_name, ch_res = fut.result()
+        results[ch_name] = ch_res
+        if ch_res["status"] == "ok":
+            print(f"  [+] {ch_name.ljust(14)}: OK (blocks {ch_res['from']} -> {ch_res['to']})")
+            ok_chains.append(ch_name)
+        elif ch_res["status"] == "no_rpc":
+            print(f"  [-] {ch_name.ljust(14)}: SKIP (no RPC: {ch_res['error']})")
+            if ch_name == "ethereum" and ch_name not in ok_chains:
+                ok_chains.append(ch_name)
+        else:
+            print(f"  [!] {ch_name.ljust(14)}: ERROR ({ch_res['error']})")
+            if ch_name == "ethereum" and ch_name not in ok_chains:
+                ok_chains.append(ch_name)
+
+# Single consolidated address table refresh across all newly loaded chains
+print("\n[DATABASE] Consolidating addresses table across all chains...", end=" ", flush=True)
 try:
-    from aml_pipeline.etl.extract.solana import SolanaExtractor
-    ext = SolanaExtractor(cfg=cfg)
-    fs, ts_ = ext.fetch_and_store_raw(batch=3)
-    results["solana"] = {"status": "ok", "from": fs, "to": ts_}
-    print(f"OK slots {fs}->{ts_}")
-    load_utxo_pairs_to_mariadb(cfg=cfg, chain_name="solana")
-    print(f"    Loaded to MySQL")
-    ok_chains.append("solana")
+    refresh_mariadb_addresses(cfg)
+    print("OK")
 except Exception as e:
-    results["solana"] = {"status": "error", "error": str(e)[:80]}
-    print(f"ERROR: {str(e)[:80]}")
+    print(f"NOTE ({str(e)[:40]})")
 
 # ── CLUSTERING — per chain ────────────────────────────────────────────────────
 print("\n[CLUSTERING — PER CHAIN]")
@@ -143,7 +166,7 @@ for chain_name in ok_chains:
 # ── PLACEMENT — per chain ─────────────────────────────────────────────────────
 print("\n[PLACEMENT — PER CHAIN]")
 placement_counts = {}
-eth_placement_result = None
+placement_results = {}
 for chain_name in ok_chains:
     print(f"  {chain_name}...", end=" ", flush=True)
     try:
@@ -151,8 +174,7 @@ for chain_name in ok_chains:
         eng = PlacementAnalysisEngine(cfg=cfg, chain_name=chain_name)
         res = eng.run(source="mariadb", persist=True)
         placement_counts[chain_name] = len(res.placements)
-        if chain_name == "ethereum":
-            eth_placement_result = res
+        placement_results[chain_name] = res
         print(f"OK  {len(res.placements)} alerts")
     except Exception as e:
         placement_counts[chain_name] = 0
@@ -161,17 +183,16 @@ for chain_name in ok_chains:
 # ── LAYERING — per chain ──────────────────────────────────────────────────────
 print("\n[LAYERING — PER CHAIN]")
 layering_counts = {}
-eth_layering_result = None
+layering_results = {}
 for chain_name in ok_chains:
     print(f"  {chain_name}...", end=" ", flush=True)
     try:
         from aml_pipeline.analytics.layering import LayeringAnalysisEngine
         eng = LayeringAnalysisEngine(cfg=cfg, chain_name=chain_name)
-        seed = eth_placement_result if chain_name == "ethereum" else None
+        seed = placement_results.get(chain_name)
         res = eng.run(source="mariadb", persist=True, placement_result=seed)
         layering_counts[chain_name] = len(res.alerts)
-        if chain_name == "ethereum":
-            eth_layering_result = res
+        layering_results[chain_name] = res
         print(f"OK  {len(res.alerts)} alerts")
     except Exception as e:
         layering_counts[chain_name] = 0
@@ -185,7 +206,7 @@ for chain_name in ok_chains:
     try:
         from aml_pipeline.analytics.integration import IntegrationAnalysisEngine
         eng = IntegrationAnalysisEngine(cfg=cfg, chain_name=chain_name)
-        seed = eth_layering_result if chain_name == "ethereum" else None
+        seed = layering_results.get(chain_name)
         res = eng.run(source="mariadb", persist=True, layering_result=seed)
         integration_counts[chain_name] = len(res.alerts)
         print(f"OK  {len(res.alerts)} alerts")
@@ -259,5 +280,6 @@ for chain, res in results.items():
         all_ok = False
 
 print("\n============================================================")
-print("  STATUS:", "ALL OK" if all_ok else "SOME CHAINS FAILED (see above)")
+elapsed = time.time() - start_time
+print(f"  STATUS: {'ALL OK' if all_ok else 'SOME CHAINS FAILED (see above)'} | Total Time: {elapsed:.2f}s")
 print("============================================================")

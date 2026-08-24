@@ -465,13 +465,23 @@ async def get_placements(
 
 
 @router.get("/summary")
-async def get_placement_summary():
+async def get_placement_summary(
+    run_id: str | None = Query(default=None),
+    before_date: str | None = Query(default=None, alias="beforeDate"),
+):
     _require_mysql()
-    run_ids = await _latest_batch_run_ids()
-    if not run_ids:
-        return {"run_id": None, "generated_at": None, "summary": {}, "top_alerts": []}
+    if (run_id and isinstance(run_id, str)) or (before_date and isinstance(before_date, str)):
+        run = await _latest_run_safe(run_id if isinstance(run_id, str) else None, before_date if isinstance(before_date, str) else None)
+        if not run:
+            return {"run_id": None, "generated_at": None, "summary": {}, "top_alerts": []}
+        run_ids = [run["id"]]
+        run_meta = run
+    else:
+        run_ids = await _latest_batch_run_ids()
+        if not run_ids:
+            return {"run_id": None, "generated_at": None, "summary": {}, "top_alerts": []}
+        run_meta = await _latest_run()
 
-    run_meta = await _latest_run()
     run_id_placeholders = ", ".join(["%s"] * len(run_ids))
 
     top_rows = await fetch_all(
@@ -492,40 +502,64 @@ async def get_placement_summary():
             if eid not in address_map:
                 address_map[eid] = addrs
 
-    # Aggregate total placements count and behavior hits across all runs in the batch
-    behaviors_map: dict[str, int] = {}
-    try:
-        count_row = await fetch_all(
-            f"SELECT SUM(JSON_EXTRACT(summary_json,'$.placements')) AS total FROM placement_runs WHERE id IN ({run_id_placeholders})",
-            tuple(run_ids),
-        )
-        total_placements = int((count_row[0].get("total") or 0) if count_row else 0)
+    # Aggregate total placements and behaviors across all runs in the batch
+    total_placements = 0
+    total_entities = 0
+    total_transactions = 0
+    aggregated_behaviors: dict[str, int] = {}
+    aggregated_display_modes: dict[str, int] = {}
+    aggregated_labels: dict[str, int] = {}
+    aggregated_validation: dict[str, int] = {}
 
-        behavior_rows = await fetch_all(
-            f"""
-            SELECT behavior_type, COUNT(*) AS cnt
-            FROM placement_behaviors
-            WHERE run_id IN ({run_id_placeholders})
-            GROUP BY behavior_type
-            """,
+    try:
+        run_rows = await fetch_all(
+            f"SELECT summary_json FROM placement_runs WHERE id IN ({run_id_placeholders})",
             tuple(run_ids),
         )
-        banned = {"funneling", "funnel", "immediate_utilization", "immediate-utilization", "immediate utilization"}
-        for brow in behavior_rows:
-            btype = str(brow.get("behavior_type") or "").strip()
-            if btype and btype.lower() not in banned:
-                behaviors_map[btype] = int(brow.get("cnt") or 0)
+        for r in run_rows:
+            s = _decode_json(r.get("summary_json"), {})
+            total_placements += int(s.get("placements") or 0)
+            total_entities += int(s.get("entities") or 0)
+            total_transactions += int(s.get("transactions") or 0)
+            for k, v in (s.get("behaviors") or {}).items():
+                aggregated_behaviors[k] = aggregated_behaviors.get(k, 0) + int(v or 0)
+            for k, v in (s.get("behavior_display_modes") or {}).items():
+                aggregated_display_modes[k] = aggregated_display_modes.get(k, 0) + int(v or 0)
+            for k, v in (s.get("labels") or {}).items():
+                aggregated_labels[k] = aggregated_labels.get(k, 0) + int(v or 0)
+            for k, v in (s.get("validation_status") or {}).items():
+                aggregated_validation[k] = aggregated_validation.get(k, 0) + int(v or 0)
     except Exception as exc:
-        logger.warning("Error computing placement summary metrics: %s", exc)
-        total_placements = 0
+        logger.warning("Failed to aggregate placement run summaries: %s", exc)
+
+    # Fallback to placement_behaviors table if behaviors dictionary was empty in summary_json
+    if not aggregated_behaviors and run_ids:
+        try:
+            b_rows = await fetch_all(
+                f"SELECT behavior_type, count(*) as cnt FROM placement_behaviors WHERE run_id IN ({run_id_placeholders}) GROUP BY behavior_type",
+                tuple(run_ids),
+            )
+            for brow in b_rows:
+                b_type = str(brow.get("behavior_type") or "").strip()
+                if b_type:
+                    aggregated_behaviors[b_type] = aggregated_behaviors.get(b_type, 0) + int(brow.get("cnt") or 0)
+        except Exception as exc:
+            logger.warning("Failed to fetch placement_behaviors: %s", exc)
+
+    summary_payload = {
+        "placements": total_placements,
+        "entities": total_entities,
+        "transactions": total_transactions,
+        "behaviors": aggregated_behaviors,
+        "behavior_display_modes": aggregated_display_modes,
+        "labels": aggregated_labels,
+        "validation_status": aggregated_validation,
+    }
 
     return {
         "run_id": run_meta["id"] if run_meta else run_ids[0],
         "generated_at": _format_ts(run_meta.get("completed_at")) if run_meta else None,
-        "summary": {
-            "placements": total_placements,
-            "behaviors": behaviors_map,
-        },
+        "summary": summary_payload,
         "top_alerts": [
             {
                 "entity_id": row.get("entity_id"),

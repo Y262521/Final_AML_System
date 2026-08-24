@@ -42,13 +42,13 @@ async def update_entity_balances(entity_id: str):
                     print(f"Found cluster {entity_id} with {len(addresses)} addresses")
                     print(f"Updating balances for cluster...")
                     await aggregator.update_cluster(entity_id, addresses)
-                    print(f"✓ Successfully updated cluster {entity_id}")
+                    print(f"[OK] Successfully updated cluster {entity_id}")
                 else:
                     # Assume it's an address
                     print(f"Treating {entity_id} as an address")
                     print(f"Fetching balances...")
                     await aggregator.update_address(entity_id)
-                    print(f"✓ Successfully updated address {entity_id}")
+                    print(f"[OK] Successfully updated address {entity_id}")
     
     except Exception as e:
         print(f"Error updating balances: {e}")

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import './styles/nbe-theme.css'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
+import WalletInvestigator from './pages/WalletInvestigator'
 import GraphExplorer from './pages/GraphExplorer'
 import Layering from './pages/Layering'
 import Placement from './pages/Placement'
@@ -10,9 +11,9 @@ import MarketValueIndex from './pages/MarketValueIndex'
 import Clusters from './pages/Clusters'
 import Analytics from './pages/Analytics'
 import RiskIntelligence from './pages/RiskIntelligence'
-import ComingSoon from './pages/ComingSoon'
 import ETLControlCenter from './pages/ETLControlCenter'
 import DevTools from './pages/DevTools'
+import TestingDashboard from './pages/Testing/TestingDashboard'
 import EntityIntelligenceWorkspace from './components/intelligence/EntityIntelligenceWorkspace'
 import AnalysisMenu from './components/intelligence/AnalysisMenu'
 import { getLatestTransactions } from './services/transactionService'
@@ -36,7 +37,7 @@ function App() {
   const [investigateAddress, setInvestigate] = useState(getInitialInvestigateAddress)
   const [lastUpdated, setLastUpdated] = useState(null)
   const [selectedChain, setSelectedChain] = useState('all')   // Phase 5: global chain filter
-  const [sortBy, setSortBy] = useState('value_usd_desc')       // Phase 5: USD sort
+  const [sortBy, setSortBy] = useState('amount_desc')          // Compatible with all backends
   const intervalRef = useRef(null)
 
   // Entity Intelligence Workspace state
@@ -138,7 +139,8 @@ function App() {
       'market-value': 'Market Value Index',
       'clusters': 'Clusters',
       'analytics': 'Analytics',
-      'risk': 'Risk Intelligence'
+      'risk': 'Risk Intelligence',
+      'testing': 'Testing & Evaluation'
     };
 
     const sourcePage = pageNames[activePage] || 'Unknown';
@@ -177,7 +179,9 @@ function App() {
           <main style={{ flex: 1, padding: '24px', overflowY: activePage === 'graph' ? 'hidden' : 'auto', overflowX: 'hidden', minWidth: 0, height: '100vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', background: '#0F1829' }}>
             {activePage === 'feed'
               ? <Dashboard transactions={transactions} loading={txLoading} loadingMore={txLoadingMore} error={txError} onInvestigate={handleInvestigate} onLoadMore={handleLoadMore} lastUpdated={lastUpdated} totalTransactions={txTotal} selectedChain={selectedChain} onChainChange={handleChainChange} sortBy={sortBy} onSortChange={handleSortChange} />
-              : activePage === 'graph'
+              : activePage === 'wallet-investigator'
+                ? <WalletInvestigator initialAddress={investigateAddress} onNavigateToGraph={(address) => navigate('graph', { address })} />
+                : activePage === 'graph'
                 ? <GraphExplorer initialAddress={investigateAddress} graphVersion={graphVersion} lastUpdated={lastUpdated} />
                 : activePage === 'placement'
                   ? <Placement onNavigateToGraph={(address) => navigate('graph', { address })} onShowAnalysisMenu={showAnalysisMenu} onOpenWorkspace={openEntityWorkspace} />
@@ -197,7 +201,9 @@ function App() {
                                 ? <DevTools />
                                 : activePage === 'etl-control'
                                   ? <ETLControlCenter />
-                                  : null
+                                  : activePage === 'testing'
+                                    ? <TestingDashboard />
+                                    : null
             }
           </main>
 
