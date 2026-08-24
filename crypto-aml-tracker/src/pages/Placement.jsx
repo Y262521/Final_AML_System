@@ -28,6 +28,7 @@ const behaviorTone = (behavior) => {
     if (behavior === 'structuring') return 'danger';
     if (behavior === 'smurfing') return 'warning';
     if (behavior === 'micro_funding') return 'accent';
+    if (behavior === 'velocity_burst') return 'warning';
     return 'slate';
 };
 
@@ -185,7 +186,7 @@ export default function Placement({ onNavigateToGraph, onShowAnalysisMenu, onOpe
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
                 {[
                     { label: 'Placement Alerts', value: formatNumber(summaryBody.placements || 0, 0), icon: '📍', tone: 'danger', sub: 'Entities above threshold' },
-                    { label: 'Behavior Hits', value: formatNumber(Object.values(summaryBody.behaviors || {}).reduce((t, c) => t + Number(c || 0), 0), 0), icon: '⚠️', tone: 'warning', sub: 'Structuring  Smurfing  Micro-funding' },
+                    { label: 'Behavior Hits', value: formatNumber(Object.values(summaryBody.behaviors || {}).reduce((t, c) => t + Number(c || 0), 0), 0), icon: '⚠️', tone: 'warning', sub: 'Structuring · Smurfing · Micro-funding · Velocity Burst' },
                     { label: 'Filtered Alerts', value: formatNumber(filteredAlerts.length, 0), icon: '🔍', tone: 'accent', sub: 'Matching current filters' },
                 ].map(({ label, value, icon, tone, sub }) => {
                     const c = { danger: { bg: 'rgba(239,68,68,0.10)', border: 'rgba(239,68,68,0.25)', text: '#F87171', num: '#F87171' }, warning: { bg: 'rgba(251,191,36,0.10)', border: 'rgba(251,191,36,0.25)', text: '#FBBF24', num: '#FBBF24' }, accent: { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.25)', text: '#60A5FA', num: '#60A5FA' } }[tone];

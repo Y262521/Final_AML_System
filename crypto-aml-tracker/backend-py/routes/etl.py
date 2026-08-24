@@ -661,9 +661,14 @@ async def get_databases_health():
             proc_col_name = get_processed_collection_name()
             raw_col  = mongo_db[raw_col_name]
             proc_col = mongo_db[proc_col_name]
-            mongo_raw_count  = await raw_col.estimated_document_count()
-            mongo_proc_count = await proc_col.estimated_document_count()
-            latest = await proc_col.find_one({}, sort=[("_id", -1)], projection={"_id": 1, "timestamp": 1})
+            
+            async def _check_mongo():
+                r_cnt = await raw_col.estimated_document_count()
+                p_cnt = await proc_col.estimated_document_count()
+                latest = await proc_col.find_one({}, sort=[("_id", -1)], projection={"_id": 1, "timestamp": 1})
+                return r_cnt, p_cnt, latest
+
+            mongo_raw_count, mongo_proc_count, latest = await asyncio.wait_for(_check_mongo(), timeout=2.0)
             if latest and latest.get("timestamp"):
                 mongo_last_updated = str(latest["timestamp"])
             mongo_status  = "online"
@@ -691,9 +696,13 @@ async def get_databases_health():
 
     if _mysql_ok():
         try:
-            tx_row   = await fetch_one("SELECT COUNT(*) AS cnt FROM transactions")
-            addr_row = await fetch_one("SELECT COUNT(*) AS cnt FROM addresses")
-            last_row = await fetch_one("SELECT MAX(timestamp) AS last_ts FROM transactions")
+            async def _check_mysql():
+                tx_row   = await fetch_one("SELECT COUNT(*) AS cnt FROM transactions")
+                addr_row = await fetch_one("SELECT COUNT(*) AS cnt FROM addresses")
+                last_row = await fetch_one("SELECT MAX(timestamp) AS last_ts FROM transactions")
+                return tx_row, addr_row, last_row
+
+            tx_row, addr_row, last_row = await asyncio.wait_for(_check_mysql(), timeout=2.0)
             mysql_tx_count    = int((tx_row   or {}).get("cnt", 0))
             mysql_addr_count  = int((addr_row or {}).get("cnt", 0))
             mysql_last_updated = _fmt_ts((last_row or {}).get("last_ts"))
@@ -724,16 +733,20 @@ async def get_databases_health():
     if driver is not None:
         try:
             database = get_env("NEO4J_DATABASE", default="neo4j")
-            async with driver.session(database=database) as session:
-                nr = await session.run("MATCH (n:Address) RETURN count(n) AS cnt")
-                n_rec = await nr.single()
-                er = await session.run("MATCH ()-[r:TRANSFER]->() RETURN count(r) AS cnt")
-                e_rec = await er.single()
-                lr = await session.run(
-                    "MATCH ()-[r:TRANSFER]->() WHERE r.block_number IS NOT NULL "
-                    "RETURN r.block_number AS bn ORDER BY r.block_number DESC LIMIT 1"
-                )
-                l_rec = await lr.single()
+            async def _check_neo4j():
+                async with driver.session(database=database) as session:
+                    nr = await session.run("MATCH (n:Address) RETURN count(n) AS cnt")
+                    n_rec = await nr.single()
+                    er = await session.run("MATCH ()-[r:TRANSFER]->() RETURN count(r) AS cnt")
+                    e_rec = await er.single()
+                    lr = await session.run(
+                        "MATCH ()-[r:TRANSFER]->() WHERE r.block_number IS NOT NULL "
+                        "RETURN r.block_number AS bn ORDER BY r.block_number DESC LIMIT 1"
+                    )
+                    l_rec = await lr.single()
+                    return n_rec, e_rec, l_rec
+
+            n_rec, e_rec, l_rec = await asyncio.wait_for(_check_neo4j(), timeout=2.0)
             neo4j_node_count = int(n_rec["cnt"]) if n_rec else 0
             neo4j_edge_count = int(e_rec["cnt"]) if e_rec else 0
             if l_rec and l_rec.get("bn") is not None:

@@ -22,7 +22,9 @@ const SIGNAL_META = {
     convergence: { label: 'Convergence', icon: '🔀', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
     dormancy: { label: 'Dormancy', icon: '💤', color: '#0369a1', bg: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)' },
     terminal_node: { label: 'Terminal Node', icon: '🚪', color: '#b91c1c', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
+    terminal_nodes: { label: 'Terminal Node', icon: '🚪', color: '#b91c1c', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
     reaggregation: { label: 'Reaggregation', icon: '🔁', color: '#d97706', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' },
+    dex_liquidity_sink: { label: 'DeFi DEX Sink', icon: '🥞', color: '#059669', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' },
 };
 
 const signalMeta = (signal) =>

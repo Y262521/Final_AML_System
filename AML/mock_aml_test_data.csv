@@ -1,0 +1,74 @@
+transaction_id,sender_address,receiver_address,amount_usd,timestamp,case_note
+TX_P1_1,place_src_1,place_mule_1_1,9500.0,2026-08-17 10:00:00,Placement Case 1: High frequency sub-10k structuring
+TX_P1_2,place_src_1,place_mule_1_2,9600.0,2026-08-17 10:03:00,Placement Case 1: High frequency sub-10k structuring
+TX_P1_3,place_src_1,place_mule_1_3,9700.0,2026-08-17 10:06:00,Placement Case 1: High frequency sub-10k structuring
+TX_P1_4,place_src_1,place_mule_1_4,9800.0,2026-08-17 10:09:00,Placement Case 1: High frequency sub-10k structuring
+TX_P2_1,place_src_2,place_mule_2_1,8900.0,2026-08-17 10:10:00,Placement Case 2: Micro-burst structuring
+TX_P2_2,place_src_2,place_mule_2_2,8950.0,2026-08-17 10:12:00,Placement Case 2: Micro-burst structuring
+TX_P2_3,place_src_2,place_mule_2_3,9000.0,2026-08-17 10:14:00,Placement Case 2: Micro-burst structuring
+TX_P2_4,place_src_2,place_mule_2_4,9050.0,2026-08-17 10:16:00,Placement Case 2: Micro-burst structuring
+TX_P2_5,place_src_2,place_mule_2_5,9100.0,2026-08-17 10:18:00,Placement Case 2: Micro-burst structuring
+TX_P3_1,place_src_3,place_mule_3_1,9800.0,2026-08-17 10:20:00,Placement Case 3: Exact threshold sub-10k fan-out
+TX_P3_2,place_src_3,place_mule_3_2,9800.0,2026-08-17 10:24:00,Placement Case 3: Exact threshold sub-10k fan-out
+TX_P3_3,place_src_3,place_mule_3_3,9800.0,2026-08-17 10:28:00,Placement Case 3: Exact threshold sub-10k fan-out
+TX_P3_4,place_src_3,place_mule_3_4,9800.0,2026-08-17 10:32:00,Placement Case 3: Exact threshold sub-10k fan-out
+TX_P3_5,place_src_3,place_mule_3_5,9800.0,2026-08-17 10:36:00,Placement Case 3: Exact threshold sub-10k fan-out
+TX_P4_1,place_src_4,place_mule_4_1,9200.0,2026-08-17 10:35:00,Placement Case 4: Multi-mule rapid fan-out
+TX_P4_2,place_src_4,place_mule_4_2,9350.0,2026-08-17 10:40:00,Placement Case 4: Multi-mule rapid fan-out
+TX_P4_3,place_src_4,place_mule_4_3,9500.0,2026-08-17 10:45:00,Placement Case 4: Multi-mule rapid fan-out
+TX_P4_4,place_src_4,place_mule_4_4,9650.0,2026-08-17 10:50:00,Placement Case 4: Multi-mule rapid fan-out
+TX_P5_1,place_src_5,place_mule_5_1,9100.0,2026-08-17 10:50:00,Placement Case 5: Large batch smurfing
+TX_P5_2,place_src_5,place_mule_5_2,9180.0,2026-08-17 10:52:00,Placement Case 5: Large batch smurfing
+TX_P5_3,place_src_5,place_mule_5_3,9260.0,2026-08-17 10:54:00,Placement Case 5: Large batch smurfing
+TX_P5_4,place_src_5,place_mule_5_4,9340.0,2026-08-17 10:56:00,Placement Case 5: Large batch smurfing
+TX_P5_5,place_src_5,place_mule_5_5,9420.0,2026-08-17 10:58:00,Placement Case 5: Large batch smurfing
+TX_P5_6,place_src_5,place_mule_5_6,9500.0,2026-08-17 11:00:00,Placement Case 5: Large batch smurfing
+TX_L1_1,layer_src_1,layer_hop1_1,45000.0,2026-08-17 11:00:00,Layering Case 1: 4-hop sequential peeling chain
+TX_L1_2,layer_hop1_1,layer_hop2_1,44500.0,2026-08-17 11:15:00,Layering Case 1: 4-hop sequential peeling chain
+TX_L1_3,layer_hop2_1,layer_hop3_1,44000.0,2026-08-17 11:30:00,Layering Case 1: 4-hop sequential peeling chain
+TX_L1_4,layer_hop3_1,mixer_pool_alpha,43500.0,2026-08-17 11:45:00,Layering Case 1: 4-hop sequential peeling chain
+TX_L2_1,layer_src_2,layer_pass_2A,32000.0,2026-08-17 12:00:00,Layering Case 2: Deep pass-through obfuscation chain
+TX_L2_2,layer_pass_2A,layer_pass_2B,31800.0,2026-08-17 12:10:00,Layering Case 2: Deep pass-through obfuscation chain
+TX_L2_3,layer_pass_2B,layer_pass_2C,31600.0,2026-08-17 12:20:00,Layering Case 2: Deep pass-through obfuscation chain
+TX_L2_4,layer_pass_2C,layer_pass_2D,31400.0,2026-08-17 12:30:00,Layering Case 2: Deep pass-through obfuscation chain
+TX_L3_1,layer_src_3,layer_hop1_3,18000.0,2026-08-17 13:00:00,Layering Case 3: 5-hop rapid movement
+TX_L3_2,layer_hop1_3,layer_hop2_3,18000.0,2026-08-17 13:08:00,Layering Case 3: 5-hop rapid movement
+TX_L3_3,layer_hop2_3,layer_hop3_3,18000.0,2026-08-17 13:16:00,Layering Case 3: 5-hop rapid movement
+TX_L3_4,layer_hop3_3,layer_hop4_3,18000.0,2026-08-17 13:24:00,Layering Case 3: 5-hop rapid movement
+TX_L3_5,layer_hop4_3,layer_dest_3,18000.0,2026-08-17 13:32:00,Layering Case 3: 5-hop rapid movement
+TX_L4_1,layer_src_4,layer_branch_4A,25000.0,2026-08-17 14:00:00,Layering Case 4: Branching peeling chain
+TX_L4_2,layer_branch_4A,layer_branch_4B,24500.0,2026-08-17 14:15:00,Layering Case 4: Branching peeling chain
+TX_L4_3,layer_branch_4B,layer_branch_4C,24000.0,2026-08-17 14:30:00,Layering Case 4: Branching peeling chain
+TX_L4_4,layer_branch_4C,mixer_pool_beta,23500.0,2026-08-17 14:45:00,Layering Case 4: Branching peeling chain into mixer
+TX_L5_1,layer_src_5,relay_1,60000.0,2026-08-17 15:00:00,Layering Case 5: Ultra-fast relay through 4 nodes
+TX_L5_2,relay_1,relay_2,59000.0,2026-08-17 15:05:00,Layering Case 5: Ultra-fast relay through 4 nodes
+TX_L5_3,relay_2,relay_3,58000.0,2026-08-17 15:10:00,Layering Case 5: Ultra-fast relay through 4 nodes
+TX_L5_4,relay_3,privacy_vault,57000.0,2026-08-17 15:15:00,Layering Case 5: Ultra-fast relay through 4 nodes
+TX_I1_1,integ_feeder_1_1,cex_offramp_alpha,15000.0,2026-08-17 16:00:00,Integration Case 1: Multi-source aggregation into CEX offramp
+TX_I1_2,integ_feeder_1_2,cex_offramp_alpha,17000.0,2026-08-17 16:10:00,Integration Case 1: Multi-source aggregation into CEX offramp
+TX_I1_3,integ_feeder_1_3,cex_offramp_alpha,19000.0,2026-08-17 16:20:00,Integration Case 1: Multi-source aggregation into CEX offramp
+TX_I1_4,integ_feeder_1_4,cex_offramp_alpha,21000.0,2026-08-17 16:30:00,Integration Case 1: Multi-source aggregation into CEX offramp
+TX_I2_1,integ_feeder_2_1,p2p_desk_beta,8500.0,2026-08-17 17:00:00,Integration Case 2: Fan-in to P2P OTC desk
+TX_I2_2,integ_feeder_2_2,p2p_desk_beta,9000.0,2026-08-17 17:12:00,Integration Case 2: Fan-in to P2P OTC desk
+TX_I2_3,integ_feeder_2_3,p2p_desk_beta,9500.0,2026-08-17 17:24:00,Integration Case 2: Fan-in to P2P OTC desk
+TX_I2_4,integ_feeder_2_4,p2p_desk_beta,10000.0,2026-08-17 17:36:00,Integration Case 2: Fan-in to P2P OTC desk
+TX_I2_5,integ_feeder_2_5,p2p_desk_beta,10500.0,2026-08-17 17:48:00,Integration Case 2: Fan-in to P2P OTC desk
+TX_I3_1,mixer_out_3_1,nested_exchange_gamma,22000.0,2026-08-17 18:00:00,Integration Case 3: Post-mixer fan-in to nested exchange
+TX_I3_2,mixer_out_3_2,nested_exchange_gamma,23000.0,2026-08-17 18:15:00,Integration Case 3: Post-mixer fan-in to nested exchange
+TX_I3_3,mixer_out_3_3,nested_exchange_gamma,24000.0,2026-08-17 18:30:00,Integration Case 3: Post-mixer fan-in to nested exchange
+TX_I3_4,mixer_out_3_4,nested_exchange_gamma,25000.0,2026-08-17 18:45:00,Integration Case 3: Post-mixer fan-in to nested exchange
+TX_I4_1,integ_feeder_4_1,high_risk_custody_delta,30000.0,2026-08-17 19:00:00,Integration Case 4: High value multi-feeder offramp
+TX_I4_2,integ_feeder_4_2,high_risk_custody_delta,33000.0,2026-08-17 19:20:00,Integration Case 4: High value multi-feeder offramp
+TX_I4_3,integ_feeder_4_3,high_risk_custody_delta,36000.0,2026-08-17 19:40:00,Integration Case 4: High value multi-feeder offramp
+TX_I4_4,integ_feeder_4_4,high_risk_custody_delta,39000.0,2026-08-17 20:00:00,Integration Case 4: High value multi-feeder offramp
+TX_I4_5,integ_feeder_4_5,high_risk_custody_delta,42000.0,2026-08-17 20:20:00,Integration Case 4: High value multi-feeder offramp
+TX_I5_1,integ_feeder_5_1,offshore_pay_gateway,12000.0,2026-08-17 20:00:00,Integration Case 5: Fan-in to offshore gateway
+TX_I5_2,integ_feeder_5_2,offshore_pay_gateway,13500.0,2026-08-17 20:10:00,Integration Case 5: Fan-in to offshore gateway
+TX_I5_3,integ_feeder_5_3,offshore_pay_gateway,15000.0,2026-08-17 20:20:00,Integration Case 5: Fan-in to offshore gateway
+TX_I5_4,integ_feeder_5_4,offshore_pay_gateway,16500.0,2026-08-17 20:30:00,Integration Case 5: Fan-in to offshore gateway
+TX_C1_1,clean_corp_A,clean_vendor_B,45000.0,2026-08-17 10:05:00,Clean Case 1: Normal large business transfer
+TX_C2_1,alice_wallet,bob_wallet,120.0,2026-08-17 10:18:00,Clean Case 2: Small P2P transfer
+TX_C2_2,bob_wallet,charlie_wallet,50.0,2026-08-17 10:45:00,Clean Case 3: Small P2P transfer
+TX_C3_1,retail_trader_1,uniswap_router,3500.0,2026-08-17 11:30:00,Clean Case 4: Standard DeFi trade
+TX_C4_1,tech_corp_payroll,employee_1,5000.0,2026-08-17 13:00:00,Clean Case 5: Normal payroll disbursement
+TX_C4_2,tech_corp_payroll,employee_2,5500.0,2026-08-17 13:10:00,Clean Case 5: Normal payroll disbursement

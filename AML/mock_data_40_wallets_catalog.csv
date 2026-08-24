@@ -1,0 +1,41 @@
+wallet_address,phase,expected_algorithm,verdict,expected_score,scenario_description
+0x71C8A3E452B88691a4F5eF52C06B3356E87C82D1,Placement,Structuring (< Limits),Bad,98.5%,"Target vault receiving 4 x ,850 deposits within 15 minutes from 4 distinct feeders to evade  reporting thresholds."
+0x89205A3E3b2A69De6Dbf7f01ED13B2108B2c43e7,Placement,Structuring (< Limits),Bad,99.0%,"Target wallet receiving 4 x ,920 uniform incoming transfers within 12 minutes."
+0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE,Placement,Smurfing (Fan-In Aggregation),Bad,88.0%,"Central smurfing aggregation hub collecting ,800 to ,950 deposits from 6 individual money mules within 10 minutes."
+0x3845badAde8e6dFF049820680d1F14bD3903a5d0,Placement,Smurfing (Fan-In Aggregation),Bad,92.0%,"Fan-in collector hub gathering ,200 to ,800 from 7 distinct smurf feeder wallets in a 12-minute rapid burst."
+0x4E83362442B8d1beC281594CEA3050c8EB01311C,Placement,Micro-Funding Accumulation,Bad,85.0%,Accumulator wallet systematically collecting 9 consecutive  micro-funding transactions within 24 minutes.
+0x6B175474E89094C44Da98b954EedeAC495271d01,Placement,Structuring (< Limits),Bad,97.0%,"High-frequency placement vault receiving 5 repeated transfers of ,750."
+0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB41,Placement,Smurfing (Fan-In Aggregation),Bad,90.0%,"Smurf collector aggregating 8 mule deposits of ,200 each."
+0xdAC17F958D2ee523a2206206994597C13D831ec1,Placement,Micro-Funding Accumulation,Bad,86.0%,10 consecutive  micro-funding transactions deposited in rapid succession.
+0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C591,Placement,Structuring (< Limits),Bad,98.0%,"Structuring vault collecting 4 x ,890 transfers below CTR threshold."
+0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc1,Placement,Smurfing (Fan-In Aggregation),Bad,89.0%,Fan-in consolidation wallet absorbing 6 incoming transfers from smurf mules.
+0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174,Layering,Bridge Hopping (Cross-Chain),Bad,95.0%,Cross-chain bridge hopping transit moving  across Ethereum and Polygon within 5 minutes.
+0xAf88d065e77c8cC2239327C5EDb3A432268e5831,Layering,Bridge Hopping (Cross-Chain),Bad,95.0%,LayerZero omnichain bridge hopping deposit moving  from Ethereum to Arbitrum.
+0x220866B1A2219f40e72f5c628B65D54268cA3A9D,Layering,Mixer Interaction (Tornado Cash),Bad,96.0%,"Depositor into sanctioned Tornado Cash privacy pool depositing ,000."
+0x083e4a93E3c026922C0212716a50Fa6808e063aC,Layering,Mixer Interaction (Tornado Cash),Bad,100.0%,Tornado Cash unlinked mixing vault contract routing anonymized funds.
+0x1b793E49237758dBD847319266371F5f45F6d744,Layering,High Depth Chaining (Multi-Hop),Bad,92.0%,"Genesis node of 5-hop high-depth sequential forwarding chain (,000)."
+0x7F367cc41522cE07553e843532431214777a9ad6,Layering,High Depth Chaining (Multi-Hop),Bad,92.0%,Intermediary hop 1 in 5-hop high-depth sequential chaining network.
+0x6cc5F688a30D379E9847511A7256162444383923,Layering,Peeling Chain Asymmetric Splits,Bad,94.0%,Originator of peeling chain forwarding  to next transit hop while peeling  into side pocket.
+0x9E7b4DaB3C24507a6D503B65D54268cA3A9D1234,Layering,Peeling Chain Asymmetric Splits,Bad,94.0%,Second hop in peeling chain forwarding  to transit while peeling  into secondary pocket.
+0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65,Layering,Shell Wallet Transit Network,Bad,88.0%,Zero-holding pass-through transit shell wallet forwarding  within 2 minutes of receipt.
+0x9965507D1a55bcC2695C58ba16FB37d819B0A4df,Layering,Shell Wallet Transit Network,Bad,88.0%,Second-stage zero-holding pass-through shell wallet forwarding  within 2 minutes of receipt.
+0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1199,Integration,Fan-In Convergence Hub,Bad,95.0%,Consolidation convergence sink gathering 6 inbound streams of  each for CEX off-ramp integration.
+0x534631Bcf33BDb069fB20A93d2fdb9e4D4dD42CF,Integration,Dormancy-to-Activation Pattern,Bad,92.0%,Dormant vault inactive for 270 days suddenly waking to disburse 3 x  liquidation transfers.
+0x7777777777777777777777777777777777777777,Integration,Terminal Node Attribution (Sink),Bad,90.0%,Receive-only terminal sink absorbing 4 high-value incoming transfers ( each) with 0 onward outflows.
+0x9999999999999999999999999999999999999999,Integration,Value Reaggregation (Reverse Structuring),Bad,95.0%,Reaggregation hub assembling 8 smurfed micro-inputs of  into a single unified high-value exit transfer ().
+0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1191,Integration,Fan-In Convergence Hub,Bad,94.0%,Convergence aggregator consolidating 6 incoming transfers from Layering chains.
+0x534631Bcf33BDb069fB20A93d2fdb9e4D4dD42C1,Integration,Dormancy-to-Activation Pattern,Bad,91.0%,Long-term dormant vault inactive for 300+ days activating with large withdrawal spikes.
+0x7777777777777777777777777777777777777771,Integration,Terminal Node Attribution (Sink),Bad,90.0%,Terminal sink wallet absorbing high-volume payments with zero outflows.
+0x9999999999999999999999999999999999999991,Integration,Value Reaggregation (Reverse Structuring),Bad,96.0%,"Reaggregation collector joining 6 fragmented inputs into one large ,000 exit."
+0x8626f6940E2eb28930eFb4CeF49B2d1F2C9C1192,Integration,Fan-In Convergence Hub,Bad,93.0%,Convergence hub collecting layered funds from multiple hops into unified balance.
+0x534631Bcf33BDb069fB20A93d2fdb9e4D4dD42C2,Integration,Dormancy-to-Activation Pattern,Bad,92.0%,Dormant wallet inactive for 180 days suddenly disbursing 3 consecutive large transfers.
+0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045,Control,Clean / None (0 Alerts),Clean,0.0%,Legitimate peer-to-peer transaction transfer (). Zero AML rules triggered.
+0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8,Control,Clean / None (0 Alerts),Clean,0.0%,Corporate payroll disbursement account paying monthly employee salaries.
+0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503,Control,Clean / None (0 Alerts),Clean,0.0%,Uniswap decentralized trader account performing regular token swaps.
+0x8894E0a0c962CB723c1976a4421c95949bE2D4E3,Control,Clean / None (0 Alerts),Clean,0.0%,Lido stETH liquid staking deposit contract transaction.
+0xF977814e90dA44bFA03b6295A0616a897441aceC,Control,Clean / None (0 Alerts),Clean,0.0%,OpenSea NFT digital art marketplace purchase.
+0x28C6c06298d514Db089934071355E5743bf21d60,Control,Clean / None (0 Alerts),Clean,0.0%,Standard protocol token burn mechanism execution.
+0x6748F50f686bfbE0F4E85888a7B298a00B29b87B,Control,Clean / None (0 Alerts),Clean,0.0%,Monthly residential apartment rent payment.
+0x435061Bcf33BDb069fB20A93d2fdb9e4D4dD3333,Control,Clean / None (0 Alerts),Clean,0.0%,Personal cold storage hardware wallet treasury transfer.
+0x53d284357ec70cE289D6D64134DfAc8E511c8a3D,Control,Clean / None (0 Alerts),Clean,0.0%,Shopify e-commerce customer checkout merchant payment.
+0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D,Control,Clean / None (0 Alerts),Clean,0.0%,Web3 gaming guild tournament player achievement reward payout.

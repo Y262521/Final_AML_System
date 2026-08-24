@@ -492,20 +492,40 @@ async def get_placement_summary():
             if eid not in address_map:
                 address_map[eid] = addrs
 
-    # Aggregate total placements count across all runs in the batch
+    # Aggregate total placements count and behavior hits across all runs in the batch
+    behaviors_map: dict[str, int] = {}
     try:
         count_row = await fetch_all(
             f"SELECT SUM(JSON_EXTRACT(summary_json,'$.placements')) AS total FROM placement_runs WHERE id IN ({run_id_placeholders})",
             tuple(run_ids),
         )
         total_placements = int((count_row[0].get("total") or 0) if count_row else 0)
-    except Exception:
+
+        behavior_rows = await fetch_all(
+            f"""
+            SELECT behavior_type, COUNT(*) AS cnt
+            FROM placement_behaviors
+            WHERE run_id IN ({run_id_placeholders})
+            GROUP BY behavior_type
+            """,
+            tuple(run_ids),
+        )
+        banned = {"funneling", "funnel", "immediate_utilization", "immediate-utilization", "immediate utilization"}
+        for brow in behavior_rows:
+            btype = str(brow.get("behavior_type") or "").strip()
+            if btype and btype.lower() not in banned:
+                behaviors_map[btype] = int(brow.get("cnt") or 0)
+    except Exception as exc:
+        logger.warning("Error computing placement summary metrics: %s", exc)
         total_placements = 0
 
     return {
         "run_id": run_meta["id"] if run_meta else run_ids[0],
         "generated_at": _format_ts(run_meta.get("completed_at")) if run_meta else None,
-        "summary": {"placements": total_placements},
+        "summary": {
+            "placements": total_placements,
+            "behaviors": behaviors_map,
+        },
         "top_alerts": [
             {
                 "entity_id": row.get("entity_id"),

@@ -30,7 +30,7 @@ password=os.getenv("MYSQL_PASSWORD"),
         minsize=1,
         maxsize=10,
     )
-    print(f"MySQL connected → {os.getenv('MYSQL_DB', 'aml_db')}")
+    print(f"MySQL connected -> {os.getenv('MYSQL_DB', 'aml_db')}")
 
 async def close_mysql():
     global pool

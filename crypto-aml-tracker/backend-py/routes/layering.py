@@ -80,6 +80,68 @@ def _format_ts(value: Any) -> str | None:
     return str(value)
 
 
+async def _latest_run() -> dict | None:
+    return await fetch_one(
+        """
+        SELECT id, source, status, started_at, completed_at, summary_json
+        FROM layering_runs
+        WHERE status = 'completed'
+        ORDER BY completed_at DESC, created_at DESC
+        LIMIT 1
+        """
+    )
+
+
+async def _latest_batch_run_ids() -> list[str]:
+    """
+    Return the latest layering run ID for each chain.
+    """
+    rows = await fetch_all(
+        """
+        SELECT a.run_id
+        FROM layering_alerts a
+        INNER JOIN (
+            SELECT a2.chain_name, MAX(r2.completed_at) AS max_ts
+            FROM layering_alerts a2
+            JOIN layering_runs r2 ON r2.id = a2.run_id
+            WHERE r2.status = 'completed'
+            GROUP BY a2.chain_name
+        ) latest_per_chain
+          ON a.chain_name = latest_per_chain.chain_name
+        JOIN layering_runs r ON r.id = a.run_id
+          AND r.completed_at = latest_per_chain.max_ts
+          AND r.status = 'completed'
+        GROUP BY a.run_id
+        """
+    )
+    if rows:
+        return list({r["run_id"] for r in rows})
+    latest = await _latest_run()
+    return [latest["id"]] if latest else []
+
+
+async def _get_run(run_id: str | None) -> dict | None:
+    if run_id:
+        return await fetch_one(
+            "SELECT id, source, status, started_at, completed_at, summary_json FROM layering_runs WHERE id = %s",
+            (run_id,),
+        )
+    return await _latest_run()
+
+
+async def _latest_run_safe(run_id: str | None = None) -> dict | None:
+    ensure_layering_schema()
+    try:
+        return await _get_run(run_id)
+    except ProgrammingError as exc:
+        if exc.args and exc.args[0] == 1146:
+            global _SCHEMA_READY
+            _SCHEMA_READY = False
+            ensure_layering_schema()
+            return await _get_run(run_id)
+        raise
+
+
 def _coerce_float(value: Any, default: float = 0.0) -> float:
     try:
         return float(value or 0.0)
@@ -480,10 +542,39 @@ async def get_layering_summary(run_id: str | None = Query(None)):
             if eid not in address_map:
                 address_map[eid] = addrs
 
+    # Aggregate summary metrics across all runs in the batch
+    total_seeds = 0
+    total_alerts = 0
+    total_bridge_pairs = 0
+    detections_map: dict[str, int] = {}
+    try:
+        agg_rows = await fetch_all(
+            f"""
+            SELECT summary_json
+            FROM layering_runs
+            WHERE id IN ({run_id_placeholders})
+            """,
+            tuple(run_ids_to_use),
+        )
+        for r in agg_rows:
+            s_dict = _decode_json(r.get("summary_json"), {})
+            total_seeds += int(s_dict.get("seeds_analyzed") or s_dict.get("seeds") or 0)
+            total_alerts += int(s_dict.get("alerts") or 0)
+            total_bridge_pairs += int(s_dict.get("bridge_pairs") or 0)
+            for d_name, d_cnt in (s_dict.get("detections") or {}).items():
+                detections_map[d_name] = detections_map.get(d_name, 0) + int(d_cnt or 0)
+    except Exception as exc:
+        logger.warning("Error aggregating layering summary: %s", exc)
+
     return {
         "run_id": run_meta["id"] if run_meta else run_ids_to_use[0],
         "generated_at": _format_ts(run_meta.get("completed_at")) if run_meta else None,
-        "summary": _decode_json(run_meta.get("summary_json"), {}) if run_meta else {},
+        "summary": {
+            "seeds_analyzed": total_seeds,
+            "alerts": total_alerts,
+            "bridge_pairs": total_bridge_pairs,
+            "detections": detections_map,
+        },
         "top_alerts": [
             {
                 "entity_id": row.get("entity_id"),

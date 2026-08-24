@@ -10,9 +10,22 @@ Chains:
   Account: solana
 """
 import sys, os, time
-sys.path.insert(0, 'src')
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+if hasattr(sys.stderr, 'reconfigure'):
+    try:
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+from pathlib import Path
+base_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(base_dir / 'src'))
 from dotenv import load_dotenv
-load_dotenv('C:/Users/yona/Desktop/Crypto_AML/crypto-aml-tracker/backend-py/.env')
+load_dotenv(base_dir / '.env')
+load_dotenv(base_dir.parent / 'crypto-aml-tracker' / 'backend-py' / '.env')
 
 from aml_pipeline.config import load_config
 from aml_pipeline.etl.load.mariadb_loader import (

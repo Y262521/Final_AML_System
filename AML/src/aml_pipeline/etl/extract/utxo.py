@@ -605,7 +605,7 @@ class UTXOExtractor(BaseExtractor):
         from_block = start_block
         to_block   = min(from_block + batch_size - 1, latest_available)
 
-        logger.info("[%s] Fetching blocks %d → %d", self.chain_name, from_block, to_block)
+        logger.info("[%s] Fetching blocks %d -> %d", self.chain_name, from_block, to_block)
 
         total_pairs = 0
         for block_number in range(from_block, to_block + 1):
@@ -615,7 +615,7 @@ class UTXOExtractor(BaseExtractor):
                 pair_count = self.save_to_db(raw_data)
                 total_pairs += pair_count
                 logger.info(
-                    "[%s] Block %d: %d txs → %d input/output pairs",
+                    "[%s] Block %d: %d txs -> %d input/output pairs",
                     self.chain_name, block_number,
                     raw_data.get("transaction_count", 0),
                     pair_count,
@@ -628,7 +628,7 @@ class UTXOExtractor(BaseExtractor):
             time.sleep(0.3)
 
         msg = (
-            f"[{self.chain_name}] Saved blocks {from_block} → {to_block} "
+            f"[{self.chain_name}] Saved blocks {from_block} -> {to_block} "
             f"({to_block - from_block + 1} blocks, {total_pairs} tx pairs)"
         )
         print(msg)

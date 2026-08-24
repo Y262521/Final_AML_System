@@ -241,9 +241,8 @@ class EVMExtractor(BaseExtractor):
         if not latest:
             return None
         block_num = int(latest.get("block_number", 0))
-        # Sanity check: Solana slots are ~400M, ETH blocks are ~25M
-        # If the returned value is unreasonably large for EVM, ignore it
-        if self.blockchain_type == "EVM" and block_num > 100_000_000:
+        # Sanity check: Ethereum L1 is ~25M, while L2s (Arbitrum, Base, Polygon) can reach 500M+
+        if self.chain_name == "ethereum" and block_num > 50_000_000:
             return None
         return block_num
 
@@ -354,6 +353,8 @@ class EVMExtractor(BaseExtractor):
 
         latest_saved = self.get_latest_saved_block()
 
+        latest_available = self.get_latest_block()
+
         if start_block is None:
             if latest_saved is not None:
                 start_block = latest_saved + 1
@@ -362,9 +363,16 @@ class EVMExtractor(BaseExtractor):
                 chain_upper = self.chain_name.upper().replace("-", "_")
                 env_start = os.getenv(f"{chain_upper}_START_BLOCK", "").strip()
                 if env_start and env_start.isdigit():
-                    start_block = int(env_start)
-                else:
+                    env_val = int(env_start)
+                    # If configured start block is more than 5000 blocks behind chain head on L2s, start near head
+                    if self.chain_name != "ethereum" and (latest_available - env_val > 5000):
+                        start_block = max(0, latest_available - 3)
+                    else:
+                        start_block = env_val
+                elif self.chain_name == "ethereum":
                     start_block = self.cfg.eth_start_block
+                else:
+                    start_block = max(0, latest_available - 3)
 
         batch_size = batch or self.cfg.eth_batch_size
         if batch_size > _MAX_FETCH_BLOCKS_PER_RUN:
@@ -374,7 +382,6 @@ class EVMExtractor(BaseExtractor):
             )
             batch_size = _MAX_FETCH_BLOCKS_PER_RUN
 
-        latest_available = self.get_latest_block()
         if start_block > latest_available:
             logger.info(
                 "[%s] No new blocks (start=%d, latest=%d)",
@@ -385,7 +392,7 @@ class EVMExtractor(BaseExtractor):
         from_block = start_block
         to_block = min(from_block + batch_size - 1, latest_available)
 
-        logger.info("[%s] Fetching blocks %d → %d", self.chain_name, from_block, to_block)
+        logger.info("[%s] Fetching blocks %d -> %d", self.chain_name, from_block, to_block)
 
         total_transactions = 0
         for block_number in range(from_block, to_block + 1):
@@ -400,7 +407,7 @@ class EVMExtractor(BaseExtractor):
 
         fetched_blocks = to_block - from_block + 1
         msg = (
-            f"[{self.chain_name}] Saved blocks {from_block} → {to_block} "
+            f"[{self.chain_name}] Saved blocks {from_block} -> {to_block} "
             f"({fetched_blocks} blocks, {total_transactions} txs)"
         )
         print(msg)

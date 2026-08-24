@@ -728,6 +728,7 @@ class PlacementAnalysisEngine:
                 self._detect_structuring(profile),
                 self._detect_smurfing(profile),
                 self._detect_micro_funding(profile),
+                self._detect_velocity_burst(profile),
             ]
             detections.extend([candidate for candidate in candidates if candidate is not None])
         return detections
@@ -867,6 +868,57 @@ class PlacementAnalysisEngine:
             supporting_tx_hashes=[tx.tx_hash for tx in small_incoming[:25]],
             first_observed_at=_iso_from_ts(small_incoming[0].timestamp),
             last_observed_at=_iso_from_ts(small_incoming[-1].timestamp),
+        )
+
+    def _detect_velocity_burst(self, profile: EntityProfile) -> BehaviorDetection | None:
+        incoming = profile.incoming_transactions
+        if len(incoming) < 5:
+            return None
+        max_window_sec = 600
+        best_conf = 0.0
+        best_metrics: dict[str, Any] | None = None
+        best_subset: list[Any] = []
+
+        for i in range(len(incoming)):
+            subset = [incoming[i]]
+            for j in range(i + 1, len(incoming)):
+                if incoming[j].timestamp - incoming[i].timestamp <= max_window_sec:
+                    subset.append(incoming[j])
+            if len(subset) >= 5:
+                window_span = max(1.0, subset[-1].timestamp - subset[0].timestamp)
+                tx_per_min = (len(subset) / window_span) * 60.0
+                total_val = sum(tx.value_eth for tx in subset)
+                intervals = [max(0.0, subset[k+1].timestamp - subset[k].timestamp) for k in range(len(subset)-1)]
+                interval_var = _relative_variance(intervals) if intervals else 0.0
+                
+                cadence_factor = min(1.0, tx_per_min / 3.0)
+                volume_factor = min(1.0, total_val / max(self.cfg.high_value_threshold_eth, 1.0))
+                burst_size_factor = min(1.0, len(subset) / 10.0)
+                regularity_factor = 1.0 - min(1.0, interval_var / 1.5)
+                
+                conf = _clamp(0.35 * cadence_factor + 0.25 * burst_size_factor + 0.25 * volume_factor + 0.15 * regularity_factor)
+                if conf > best_conf:
+                    best_conf = conf
+                    best_subset = subset
+                    best_metrics = {
+                        "burst_tx_count": len(subset),
+                        "time_window_seconds": int(window_span),
+                        "tx_per_minute": round(tx_per_min, 2),
+                        "total_value_eth": round(total_val, 8),
+                        "avg_inter_arrival_sec": round(sum(intervals)/len(intervals), 2) if intervals else 0.0,
+                    }
+
+        if best_conf < _SUSPICIOUS_BEHAVIOR_THRESHOLD or not best_metrics:
+            return None
+        return BehaviorDetection(
+            entity_id=profile.entity.entity_id,
+            entity_type=profile.entity.entity_type,
+            behavior_type="velocity_burst",
+            confidence_score=round(best_conf, 4),
+            supporting_metrics=best_metrics,
+            supporting_tx_hashes=[tx.tx_hash for tx in best_subset[:25]],
+            first_observed_at=_iso_from_ts(best_subset[0].timestamp),
+            last_observed_at=_iso_from_ts(best_subset[-1].timestamp),
         )
 
     def _trace_suspicious_entities(

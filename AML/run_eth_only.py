@@ -2,7 +2,7 @@
 import sys
 sys.path.insert(0, 'src')
 from dotenv import load_dotenv
-load_dotenv('C:/Users/yona/Desktop/Crypto_AML/crypto-aml-tracker/backend-py/.env')
+load_dotenv(r'C:\Users\hp\Desktop\updated AML\Updated-AML-System\crypto-aml-tracker\backend-py\.env')
 
 from aml_pipeline.config import load_config
 from aml_pipeline.etl.load.mariadb_loader import create_tables_if_not_exist

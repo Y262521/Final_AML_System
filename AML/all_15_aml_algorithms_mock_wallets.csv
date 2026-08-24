@@ -1,0 +1,36 @@
+wallet_address,category,phase,expected_algorithm,scenario_description
+struct_target_wallet,High-Risk,Placement,structuring,Rapid recurring structured inflows just below reporting threshold
+smurf_target_wallet,High-Risk,Placement,smurfing,Smurfing aggregator receiving funds from 7 unique senders within 12 minutes
+micro_accum_wallet,High-Risk,Placement,micro_funding,Micro-funding accumulation wallet receiving 10 rapid micro-transfers
+velocity_burst_target_wallet,High-Risk,Placement,velocity_burst,Automated bot surge receiving 8 deposits in under 2 minutes
+bridge_user_1,High-Risk,Layering,bridge_hopping,Bridge hopper depositing large sum to Arbitrum bridge contract
+arbitrum_bridge_contract,High-Risk,Layering,bridge_hopping,Cross-chain bridge router contract
+bridge_user_arb,High-Risk,Layering,bridge_hopping,Bridge hopping withdrawal recipient on Arbitrum
+chain_src,High-Risk,Layering,high_depth_transaction_chaining,Originator of a 5-hop high-depth rapid transaction forwarding chain
+chain_hop1,High-Risk,Layering,high_depth_transaction_chaining,Intermediary pass-through node in 5-hop forwarding chain
+chain_hop2,High-Risk,Layering,high_depth_transaction_chaining,Intermediary pass-through node in 5-hop forwarding chain
+chain_hop3,High-Risk,Layering,high_depth_transaction_chaining,Intermediary pass-through node in 5-hop forwarding chain
+chain_hop4,High-Risk,Layering,high_depth_transaction_chaining,Intermediary pass-through node in 5-hop forwarding chain
+chain_dest,High-Risk,Layering,high_depth_transaction_chaining,Destination sink of 5-hop high-depth chain
+mixer_user_wallet,High-Risk,Layering,mixing_interaction,User wallet depositing directly into Tornado Cash mixing pool
+tornado_cash_pool,High-Risk,Layering,mixing_interaction,Sanctioned privacy mixer contract pool
+anonymized_receiver,High-Risk,Layering,mixing_interaction,Recipient of unlinked withdrawal from mixer pool
+peel_main_1,High-Risk,Layering,peeling_chain,Originator of iterative peeling chain splitting $5k to pocket and $90k forward
+peel_main_2,High-Risk,Layering,peeling_chain,Second hop in peeling chain forwarding bulk funds
+peel_main_3,High-Risk,Layering,peeling_chain,Third hop in peeling chain forwarding bulk funds
+shell_entry,High-Risk,Layering,shell_wallet_network,Entry point to high-velocity shell wallet pass-through network
+shell_pass_1,High-Risk,Layering,shell_wallet_network,Zero-holding transit shell wallet hop 1
+shell_pass_2,High-Risk,Layering,shell_wallet_network,Zero-holding transit shell wallet hop 2
+circular_loop_origin_wallet,High-Risk,Layering,loop_detection,Originator of 4-hop wash trading loop returning funds to origin
+conv_destination_cex,High-Risk,Integration,convergence,Consolidation destination hub receiving fan-in from 7 separate feeders
+dormant_wallet_alpha,High-Risk,Integration,dormancy,Dormant wallet inactive for >200 days suddenly activated with 4 large cashouts
+terminal_sink_wallet,High-Risk,Integration,terminal_nodes,Receive-only terminal sink wallet accumulating funds with 0 outgoing
+reagg_hub_wallet,High-Risk,Integration,reaggregation,Reaggregation hub assembling 8 small input streams into 1 large exit payment
+dex_sink_wallet_beta,High-Risk,Integration,dex_liquidity_sink,High-volume capital liquidation via Uniswap V3 liquidity sink
+alice_clean,Clean,Control,none,Legitimate peer-to-peer user transfer
+bob_clean,Clean,Control,none,Legitimate peer-to-peer user recipient
+corp_payroll,Clean,Control,none,Legitimate corporate payroll distribution account
+employee_A,Clean,Control,none,Clean employee salary recipient
+employee_B,Clean,Control,none,Clean employee salary recipient
+trader_joe,Clean,Control,none,Legitimate decentralized exchange trader
+uniswap_v3_router,Clean,Control,none,Verified decentralized exchange contract

@@ -12,6 +12,7 @@ import Analytics from './pages/Analytics'
 import RiskIntelligence from './pages/RiskIntelligence'
 import ComingSoon from './pages/ComingSoon'
 import ETLControlCenter from './pages/ETLControlCenter'
+import DevTools from './pages/DevTools'
 import EntityIntelligenceWorkspace from './components/intelligence/EntityIntelligenceWorkspace'
 import AnalysisMenu from './components/intelligence/AnalysisMenu'
 import { getLatestTransactions } from './services/transactionService'
@@ -192,9 +193,11 @@ function App() {
                             ? <Analytics />
                             : activePage === 'risk'
                               ? <RiskIntelligence />
-                              : activePage === 'etl-control'
-                                ? <ETLControlCenter />
-                                : null
+                              : activePage === 'dev-tools'
+                                ? <DevTools />
+                                : activePage === 'etl-control'
+                                  ? <ETLControlCenter />
+                                  : null
             }
           </main>
 

@@ -68,7 +68,7 @@ export const getAnalytics = () => _get(`${API_BASE}/transactions/analytics`);
 export const getClusters = ({ limit = 1000, minSize = 2 } = {}) => {
   const params = new URLSearchParams({ limit: String(limit), min_size: String(minSize) });
   // We request only summary payloads here; detailed data is fetched per-cluster.
-  return _get(`${API_BASE}/clusters?${params}`);
+  return _get(`${API_BASE}/clusters/?${params}`);
 };
 
 /**
@@ -125,7 +125,7 @@ export const getPlacements = ({ limit = 5000, minConfidence = 0.0, runId, before
   if (runId) params.set('run_id', runId);
   if (beforeDate) params.set('before_date', beforeDate);
   if (chain) params.set('chain', chain);
-  return _get(`${API_BASE}/placement?${params}`);
+  return _get(`${API_BASE}/placement/?${params}`);
 };
 
 // ── Layering ────────────────────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ export const getLayeringAlerts = ({ limit = 5000, minConfidence = 0.0, runId, ch
   const params = new URLSearchParams({ limit: String(limit), min_confidence: String(minConfidence) });
   if (runId) params.set('run_id', runId);
   if (chain) params.set('chain', chain);
-  return _get(`${API_BASE}/layering?${params}`);
+  return _get(`${API_BASE}/layering/?${params}`);
 };
 
 // ── Integration ─────────────────────────────────────────────────────────────────
@@ -184,7 +184,7 @@ export const getIntegrationAlerts = ({ runId, beforeDate, limit = 10000, minScor
   if (beforeDate) params.set('beforeDate', beforeDate);
   if (signal) params.set('signal', signal);
   if (chain) params.set('chain', chain);
-  return _get(`${API_BASE}/integration?${params}`);
+  return _get(`${API_BASE}/integration/?${params}`);
 };
 
 // ── Chain of Custody ────────────────────────────────────────────────────────────

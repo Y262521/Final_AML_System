@@ -21,6 +21,7 @@ from .detectors import (
     MixingInteractionDetector,
     PeelingChainDetector,
     ShellWalletNetworkDetector,
+    LoopDetectionDetector,
 )
 from .service_profiles import ServiceRegistry, load_service_registry
 from .types import (
@@ -54,6 +55,7 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
             BridgeHoppingDetector(),
             ShellWalletNetworkDetector(),
             HighDepthTransactionChainingDetector(),
+            LoopDetectionDetector(),
         ]
 
     def run(

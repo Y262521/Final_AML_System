@@ -5,6 +5,7 @@ from .high_depth import HighDepthTransactionChainingDetector
 from .mixing import MixingInteractionDetector
 from .peeling import PeelingChainDetector
 from .shell_wallets import ShellWalletNetworkDetector
+from .loop_detection import LoopDetectionDetector
 
 __all__ = [
     "BridgeHoppingDetector",
@@ -12,4 +13,5 @@ __all__ = [
     "MixingInteractionDetector",
     "PeelingChainDetector",
     "ShellWalletNetworkDetector",
+    "LoopDetectionDetector",
 ]

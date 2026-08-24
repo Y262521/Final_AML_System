@@ -10,6 +10,7 @@ export const PAGE_ROUTES = Object.freeze({
   risk: '/risk',
   'etl-control': '/etl-control',
   'coming-soon': '/coming-soon',
+  'dev-tools': '/dev-tools',
 })
 
 export const DEFAULT_PAGE = 'feed'

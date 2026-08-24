@@ -25,6 +25,7 @@ const METHOD_LABELS = {
     bridge_hopping: 'Cross-chain & bridge hopping',
     shell_wallet_network: 'Shell wallet networks',
     high_depth_transaction_chaining: 'High-depth transaction chaining',
+    loop_detection: 'Circular routing & wash loops',
 };
 
 const formatMethod = (value) => METHOD_LABELS[value] || (value || '').replaceAll('_', ' ');
@@ -47,6 +48,7 @@ const toneForMethod = (method) => {
     if (method === 'bridge_hopping') return '#0369a1';
     if (method === 'shell_wallet_network') return '#166534';
     if (method === 'high_depth_transaction_chaining') return '#312e81';
+    if (method === 'loop_detection') return '#c2410c';
     return '#334155';
 };
 
@@ -56,6 +58,7 @@ const paletteForMethod = (method) => {
     if (method === 'bridge_hopping') return { background: 'rgba(96,165,250,0.12)', border: 'rgba(96,165,250,0.3)', color: '#60A5FA' };
     if (method === 'shell_wallet_network') return { background: 'rgba(74,222,128,0.10)', border: 'rgba(74,222,128,0.25)', color: '#4ADE80' };
     if (method === 'high_depth_transaction_chaining') return { background: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)', color: '#A78BFA' };
+    if (method === 'loop_detection') return { background: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.3)', color: '#FB923C' };
     return { background: 'rgba(201,168,76,0.08)', border: 'rgba(201,168,76,0.25)', color: '#C9A84C' };
 };
 
@@ -258,7 +261,7 @@ export default function Layering({ onNavigateToGraph, onOpenWorkspace }) {
         setError(null);
         Promise.all([
             // Pass userSelectedRunId only when explicitly chosen — otherwise null = batch query
-            getLayeringSummary(userSelectedRunId || undefined),
+            getLayeringSummary({ runId: userSelectedRunId || undefined }),
             getLayeringAlerts({
                 runId: userSelectedRunId || undefined,
             }),
