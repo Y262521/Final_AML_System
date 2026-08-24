@@ -297,3 +297,1424 @@
   letter-spacing: 0.1em;
   margin-bottom: 3px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   COURT REPORT STANDARD & JUDICIAL EVIDENCE DOSSIER STYLES
+   National Bank of Ethiopia · Certified Forensic Evidence
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Container ── */
+.court-report-document {
+  transition: all 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+}
+
+/* ── Dark Institutional Theme ── */
+.court-dark-theme {
+  background: #0D1628;
+  border: 1px solid rgba(201,168,76,0.3);
+  color: #E2D9C8;
+  padding: 32px;
+}
+.court-dark-theme .cr-header-section {
+  border-bottom: 2px solid rgba(201,168,76,0.35);
+  padding-bottom: 22px;
+  margin-bottom: 24px;
+}
+.court-dark-theme .cr-institution-name {
+  color: #C9A84C;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+.court-dark-theme .cr-division-name {
+  color: #8A9DB5;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.court-dark-theme .cr-classification-badge {
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.35);
+  padding: 6px 14px;
+  border-radius: 6px;
+  text-align: right;
+}
+.court-dark-theme .cr-classification-label {
+  font-size: 9px;
+  font-weight: 800;
+  color: #F87171;
+  letter-spacing: 0.08em;
+}
+.court-dark-theme .cr-classification-status {
+  font-size: 11px;
+  font-weight: 800;
+  color: #FCA5A5;
+}
+.court-dark-theme .cr-main-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #C8B98A;
+  letter-spacing: 0.06em;
+  margin: 16px 0 4px 0;
+  text-align: center;
+}
+.court-dark-theme .cr-sub-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #E2D9C8;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px 0;
+  text-align: center;
+}
+.court-dark-theme .cr-statutory-cite {
+  font-size: 11px;
+  color: #8A9DB5;
+  text-align: center;
+  font-style: italic;
+}
+.court-dark-theme .cr-docket-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background: #070D19;
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-top: 18px;
+}
+.court-dark-theme .cr-docket-key {
+  font-size: 10px;
+  font-weight: 800;
+  color: #8A9DB5;
+  letter-spacing: 0.06em;
+  margin-right: 8px;
+}
+.court-dark-theme .cr-docket-val {
+  font-size: 12px;
+  color: #E2D9C8;
+}
+.court-dark-theme .cr-target-addr {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  color: #C9A84C;
+  word-break: break-all;
+}
+.court-dark-theme .cr-ev-status {
+  color: #4ADE80;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+/* Sections in Dark */
+.court-dark-theme .cr-section {
+  margin-bottom: 26px;
+  background: #0A1020;
+  border: 1px solid rgba(201,168,76,0.18);
+  border-radius: 10px;
+  padding: 20px 24px;
+}
+.court-dark-theme .cr-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(201,168,76,0.18);
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.court-dark-theme .cr-sec-num {
+  font-size: 10px;
+  font-weight: 900;
+  background: rgba(201,168,76,0.15);
+  color: #C9A84C;
+  border: 1px solid rgba(201,168,76,0.3);
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+}
+.court-dark-theme .cr-sec-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #C8B98A;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+.court-dark-theme .cr-paragraph {
+  font-size: 12px;
+  color: #CBD5E1;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.court-dark-theme .cr-truth-declaration {
+  background: #070D19;
+  border-left: 3px solid #C9A84C;
+  padding: 10px 14px;
+  border-radius: 0 6px 6px 0;
+  color: #E2D9C8;
+}
+
+/* Verdict Box in Dark */
+.court-dark-theme .cr-verdict-banner {
+  border-radius: 8px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.court-dark-theme .cr-verdict-high {
+  background: linear-gradient(135deg, rgba(239,68,68,0.12) 0%, #070D19 100%);
+  border: 1px solid rgba(239,68,68,0.35);
+}
+.court-dark-theme .cr-verdict-normal {
+  background: linear-gradient(135deg, rgba(34,197,94,0.12) 0%, #070D19 100%);
+  border: 1px solid rgba(34,197,94,0.35);
+}
+.court-dark-theme .cr-verdict-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+.court-dark-theme .cr-verdict-score-box {
+  width: 70px;
+  height: 70px;
+  border-radius: 8px;
+  background: #0A1020;
+  border: 2px solid #C9A84C;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.court-dark-theme .cr-verdict-score-val {
+  font-size: 24px;
+  font-weight: 900;
+  color: #C9A84C;
+  line-height: 1;
+}
+.court-dark-theme .cr-verdict-score-lbl {
+  font-size: 8px;
+  font-weight: 800;
+  color: #8A9DB5;
+  margin-top: 3px;
+}
+.court-dark-theme .cr-threat-classification {
+  font-size: 13px;
+  font-weight: 800;
+  color: #E2D9C8;
+  margin-bottom: 4px;
+}
+.court-dark-theme .cr-conf-pill {
+  margin-left: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  background: rgba(201,168,76,0.15);
+  color: #C9A84C;
+  border: 1px solid rgba(201,168,76,0.25);
+}
+.court-dark-theme .cr-verdict-summary-text {
+  font-size: 12px;
+  color: #CBD5E1;
+}
+.court-dark-theme .cr-verdict-bottom {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 10px;
+  font-size: 11px;
+}
+.court-dark-theme .cr-verdict-rec-label {
+  font-weight: 800;
+  color: #C8B98A;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.court-dark-theme .cr-verdict-rec-val {
+  color: #E2D9C8;
+  line-height: 1.4;
+}
+
+/* Tables in Dark */
+.court-dark-theme .cr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.court-dark-theme .cr-table th {
+  background: rgba(201,168,76,0.08);
+  color: #C8B98A;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(201,168,76,0.2);
+  text-align: left;
+}
+.court-dark-theme .cr-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: #E2D9C8;
+}
+
+/* Cards & 2-Col Grid in Dark */
+.court-dark-theme .cr-two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.court-dark-theme .cr-card {
+  background: #070D19;
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.court-dark-theme .cr-card-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #C8B98A;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(201,168,76,0.12);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+.court-dark-theme .cr-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.court-dark-theme .cr-kv-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+.court-dark-theme .cr-k {
+  color: #8A9DB5;
+  font-weight: 600;
+}
+.court-dark-theme .cr-v {
+  color: #E2D9C8;
+  font-weight: 500;
+  text-align: right;
+}
+.court-dark-theme .cr-mono-small {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #C8B98A;
+}
+
+/* Sub-sections (3 Stages) in Dark */
+.court-dark-theme .cr-sub-section {
+  background: #070D19;
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.court-dark-theme .cr-sub-section-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.court-dark-theme .cr-sub-badge {
+  color: #0A1020;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+.court-dark-theme .cr-sub-title-text {
+  font-size: 12px;
+  font-weight: 800;
+  color: #E2D9C8;
+  margin: 0;
+}
+.court-dark-theme .cr-sub-score-text {
+  font-size: 11px;
+  color: #8A9DB5;
+  margin-top: 2px;
+}
+.court-dark-theme .cr-findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.court-dark-theme .cr-finding-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+  color: #CBD5E1;
+}
+.court-dark-theme .cr-finding-bullet {
+  color: #C9A84C;
+}
+.court-dark-theme .cr-behavior-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.court-dark-theme .cr-chip {
+  background: rgba(201,168,76,0.08);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: #C8B98A;
+}
+
+/* Exhibit A Ledger Table in Dark */
+.court-dark-theme .cr-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+.court-dark-theme .cr-exhibit-num {
+  font-weight: 800;
+  color: #C9A84C;
+  font-size: 10px;
+}
+.court-dark-theme .cr-mono-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #C8B98A;
+}
+.court-dark-theme .cr-dir-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+}
+.court-dark-theme .cr-dir-in { background: rgba(34,197,94,0.15); color: #4ADE80; }
+.court-dark-theme .cr-dir-out { background: rgba(239,68,68,0.15); color: #F87171; }
+.court-dark-theme .cr-val-cell { font-weight: 700; color: #E2D9C8; }
+.court-dark-theme .cr-usd-cell { color: #8A9DB5; }
+.court-dark-theme .cr-stage-tag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.court-dark-theme .cr-stage-placement { background: rgba(245,158,11,0.15); color: #FBBF24; }
+.court-dark-theme .cr-stage-layering { background: rgba(167,139,250,0.15); color: #C4B5FD; }
+.court-dark-theme .cr-ledger-overflow-note {
+  font-size: 10px;
+  color: #8A9DB5;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+/* Orders in Dark */
+.court-dark-theme .cr-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.court-dark-theme .cr-order-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #070D19;
+  border: 1px solid rgba(201,168,76,0.15);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 11px;
+}
+.court-dark-theme .cr-order-num {
+  font-weight: 900;
+  color: #C9A84C;
+  font-size: 13px;
+}
+.court-dark-theme .cr-order-content strong {
+  color: #C8B98A;
+}
+
+/* Digest & Signatures in Dark */
+.court-dark-theme .cr-digest-container {
+  background: #070D19;
+  border: 1px solid rgba(201,168,76,0.25);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+.court-dark-theme .cr-digest-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 800;
+  color: #C9A84C;
+  margin-bottom: 6px;
+}
+.court-dark-theme .cr-digest-status {
+  color: #4ADE80;
+}
+.court-dark-theme .cr-digest-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #E2D9C8;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+  background: #0A1020;
+  padding: 8px 10px;
+  border-radius: 4px;
+}
+.court-dark-theme .cr-digest-footer {
+  font-size: 9px;
+  color: #8A9DB5;
+  margin-top: 6px;
+}
+.court-dark-theme .cr-signatures-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 20px;
+  align-items: center;
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(201,168,76,0.18);
+}
+.court-dark-theme .cr-sig-box {
+  text-align: center;
+}
+.court-dark-theme .cr-sig-line {
+  width: 80%;
+  height: 1px;
+  background: #C9A84C;
+  margin: 20px auto 8px auto;
+}
+.court-dark-theme .cr-sig-name {
+  font-size: 11px;
+  font-weight: 800;
+  color: #C8B98A;
+  letter-spacing: 0.04em;
+}
+.court-dark-theme .cr-sig-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #E2D9C8;
+}
+.court-dark-theme .cr-sig-dept {
+  font-size: 9px;
+  color: #8A9DB5;
+}
+.court-dark-theme .cr-sig-id {
+  font-size: 9px;
+  color: #64748B;
+  margin-top: 3px;
+  font-family: monospace;
+}
+.court-dark-theme .cr-official-seal {
+  width: 90px;
+  height: 90px;
+  border: 2px dashed #C9A84C;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 6px;
+  background: rgba(201,168,76,0.05);
+}
+.court-dark-theme .cr-seal-star { color: #C9A84C; font-size: 12px; }
+.court-dark-theme .cr-seal-text { font-size: 7px; font-weight: 900; color: #C9A84C; line-height: 1.1; }
+.court-dark-theme .cr-seal-sub { font-size: 6px; color: #8A9DB5; margin-top: 2px; }
+.court-dark-theme .cr-seal-valid { font-size: 6px; font-weight: 800; color: #4ADE80; }
+.court-dark-theme .cr-legal-notice {
+  font-size: 9px;
+  color: #64748B;
+  text-align: justify;
+  margin-top: 20px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COURT PAPER THEME (A4 White / Legal Standard Preview)
+   ═══════════════════════════════════════════════════════════════ */
+.court-paper-theme {
+  background: #FFFFFF !important;
+  color: #111827 !important;
+  border: 1px solid #D1D5DB !important;
+  padding: 40px !important;
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: 'Times New Roman', Times, Georgia, serif !important;
+}
+.court-paper-theme .cr-header-section {
+  border-bottom: 2px solid #000000;
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+}
+.court-paper-theme .cr-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.court-paper-theme .cr-emblem-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.court-paper-theme .cr-emblem-icon {
+  font-size: 26px;
+}
+.court-paper-theme .cr-institution-name {
+  color: #000000;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-division-name {
+  color: #374151;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-classification-badge {
+  background: #FEE2E2;
+  border: 1px solid #DC2626;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-align: right;
+}
+.court-paper-theme .cr-classification-label {
+  font-size: 8px;
+  font-weight: 900;
+  color: #991B1B;
+  font-family: Arial, sans-serif;
+}
+.court-paper-theme .cr-classification-status {
+  font-size: 10px;
+  font-weight: 900;
+  color: #B91C1C;
+  font-family: Arial, sans-serif;
+}
+.court-paper-theme .cr-main-title {
+  font-size: 20px;
+  font-weight: 900;
+  color: #000000;
+  letter-spacing: 0.06em;
+  text-align: center;
+  margin: 14px 0 2px 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-sub-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #1F2937;
+  text-align: center;
+  margin: 0 0 4px 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-statutory-cite {
+  font-size: 10px;
+  color: #4B5563;
+  text-align: center;
+  font-style: italic;
+}
+.court-paper-theme .cr-docket-table {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: #F9FAFB;
+  border: 1px solid #9CA3AF;
+  padding: 10px 14px;
+  margin-top: 14px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-docket-key {
+  font-size: 9px;
+  font-weight: 900;
+  color: #374151;
+  letter-spacing: 0.06em;
+  margin-right: 6px;
+}
+.court-paper-theme .cr-docket-val {
+  font-size: 11px;
+  color: #000000;
+}
+.court-paper-theme .cr-target-addr {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 800;
+  color: #111827;
+  word-break: break-all;
+}
+.court-paper-theme .cr-ev-status {
+  color: #15803D;
+  font-weight: 800;
+}
+
+/* Sections in Court Paper */
+.court-paper-theme .cr-section {
+  margin-bottom: 22px;
+  border-bottom: 1px solid #E5E7EB;
+  padding-bottom: 18px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.court-paper-theme .cr-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1.5px solid #111827;
+  padding-bottom: 6px;
+  margin-bottom: 12px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-sec-num {
+  font-size: 9px;
+  font-weight: 900;
+  background: #111827;
+  color: #FFFFFF;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.court-paper-theme .cr-sec-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: #000000;
+  letter-spacing: 0.04em;
+  margin: 0;
+}
+.court-paper-theme .cr-paragraph {
+  font-size: 12px;
+  color: #1F2937;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+.court-paper-theme .cr-truth-declaration {
+  background: #F3F4F6;
+  border-left: 3px solid #111827;
+  padding: 8px 12px;
+  color: #111827;
+  font-size: 11px;
+}
+
+/* Verdict Box in Paper */
+.court-paper-theme .cr-verdict-banner {
+  border: 1.5px solid #111827;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  background: #F9FAFB;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-verdict-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.court-paper-theme .cr-verdict-score-box {
+  width: 60px;
+  height: 60px;
+  border: 2px solid #111827;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.court-paper-theme .cr-verdict-score-val {
+  font-size: 22px;
+  font-weight: 900;
+  color: #000000;
+  line-height: 1;
+}
+.court-paper-theme .cr-verdict-score-lbl {
+  font-size: 7px;
+  font-weight: 900;
+  color: #4B5563;
+  margin-top: 2px;
+}
+.court-paper-theme .cr-threat-classification {
+  font-size: 12px;
+  font-weight: 900;
+  color: #000000;
+  margin-bottom: 3px;
+}
+.court-paper-theme .cr-conf-pill {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  background: #E5E7EB;
+  color: #111827;
+  font-weight: 700;
+}
+.court-paper-theme .cr-verdict-summary-text {
+  font-size: 11px;
+  color: #1F2937;
+}
+.court-paper-theme .cr-verdict-bottom {
+  border-top: 1px solid #D1D5DB;
+  padding-top: 8px;
+  font-size: 11px;
+}
+.court-paper-theme .cr-verdict-rec-label {
+  font-weight: 900;
+  color: #000000;
+  font-size: 9px;
+  margin-bottom: 3px;
+}
+.court-paper-theme .cr-verdict-rec-val {
+  color: #111827;
+}
+
+/* Tables in Court Paper */
+.court-paper-theme .cr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-table th {
+  background: #F3F4F6;
+  color: #000000;
+  font-weight: 900;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border: 1px solid #9CA3AF;
+  text-align: left;
+}
+.court-paper-theme .cr-table td {
+  padding: 6px 8px;
+  border: 1px solid #D1D5DB;
+  color: #111827;
+}
+
+/* 2-Col Grid & Cards in Paper */
+.court-paper-theme .cr-two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.court-paper-theme .cr-card {
+  border: 1px solid #9CA3AF;
+  background: #FFFFFF;
+  padding: 10px 12px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-card-title {
+  font-size: 10px;
+  font-weight: 900;
+  color: #000000;
+  text-transform: uppercase;
+  border-bottom: 1px solid #D1D5DB;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.court-paper-theme .cr-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.court-paper-theme .cr-kv-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+}
+.court-paper-theme .cr-k { color: #4B5563; font-weight: 700; }
+.court-paper-theme .cr-v { color: #000000; font-weight: 600; text-align: right; }
+.court-paper-theme .cr-mono-small { font-family: 'Courier New', monospace; font-size: 9px; }
+
+/* Sub-sections in Paper */
+.court-paper-theme .cr-sub-section {
+  border: 1px solid #D1D5DB;
+  background: #F9FAFB;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-sub-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.court-paper-theme .cr-sub-badge {
+  color: #FFFFFF;
+  background: #111827 !important;
+  font-size: 8px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.court-paper-theme .cr-sub-title-text {
+  font-size: 11px;
+  font-weight: 800;
+  color: #000000;
+  margin: 0;
+}
+.court-paper-theme .cr-sub-score-text {
+  font-size: 10px;
+  color: #4B5563;
+}
+.court-paper-theme .cr-findings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.court-paper-theme .cr-finding-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 10px;
+  color: #1F2937;
+}
+.court-paper-theme .cr-finding-bullet { color: #000000; font-weight: 900; }
+.court-paper-theme .cr-behavior-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.court-paper-theme .cr-chip {
+  background: #E5E7EB;
+  border: 1px solid #9CA3AF;
+  padding: 2px 6px;
+  font-size: 9px;
+  color: #111827;
+}
+
+/* Exhibit Table in Paper */
+.court-paper-theme .cr-table-wrap {
+  border: 1px solid #9CA3AF;
+  margin-top: 6px;
+}
+.court-paper-theme .cr-exhibit-num { font-weight: 900; color: #000000; }
+.court-paper-theme .cr-mono-cell { font-family: 'Courier New', monospace; font-size: 9px; }
+.court-paper-theme .cr-dir-badge {
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 8px;
+  font-weight: 900;
+}
+.court-paper-theme .cr-dir-in { background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; }
+.court-paper-theme .cr-dir-out { background: #FEE2E2; color: #B91C1C; border: 1px solid #FCA5A5; }
+.court-paper-theme .cr-val-cell { font-weight: 700; color: #000000; }
+.court-paper-theme .cr-usd-cell { color: #4B5563; }
+.court-paper-theme .cr-stage-tag {
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-size: 8px;
+  font-weight: 800;
+  background: #F3F4F6;
+  color: #374151;
+}
+
+/* Orders in Paper */
+.court-paper-theme .cr-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-order-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid #D1D5DB;
+  background: #F9FAFB;
+  padding: 8px 10px;
+  font-size: 10px;
+}
+.court-paper-theme .cr-order-num { font-weight: 900; color: #000000; font-size: 12px; }
+.court-paper-theme .cr-order-content strong { color: #000000; }
+
+/* Digest & Signatures in Paper */
+.court-paper-theme .cr-digest-container {
+  border: 1px solid #9CA3AF;
+  background: #F9FAFB;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-digest-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  font-weight: 900;
+  color: #000000;
+  margin-bottom: 4px;
+}
+.court-paper-theme .cr-digest-status { color: #15803D; }
+.court-paper-theme .cr-digest-value {
+  font-family: 'Courier New', monospace;
+  font-size: 9px;
+  color: #000000;
+  word-break: break-all;
+  background: #FFFFFF;
+  border: 1px solid #D1D5DB;
+  padding: 6px 8px;
+}
+.court-paper-theme .cr-digest-footer { font-size: 8px; color: #4B5563; margin-top: 4px; }
+.court-paper-theme .cr-signatures-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1.5px solid #000000;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.court-paper-theme .cr-sig-box { text-align: center; }
+.court-paper-theme .cr-sig-line {
+  width: 75%;
+  height: 1.5px;
+  background: #000000;
+  margin: 18px auto 6px auto;
+}
+.court-paper-theme .cr-sig-name { font-size: 10px; font-weight: 900; color: #000000; }
+.court-paper-theme .cr-sig-title { font-size: 9px; font-weight: 700; color: #374151; }
+.court-paper-theme .cr-sig-dept { font-size: 8px; color: #6B7280; }
+.court-paper-theme .cr-sig-id { font-size: 8px; color: #9CA3AF; font-family: monospace; }
+.court-paper-theme .cr-official-seal {
+  width: 80px;
+  height: 80px;
+  border: 2px solid #000000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4px;
+}
+.court-paper-theme .cr-seal-star { color: #000000; font-size: 11px; }
+.court-paper-theme .cr-seal-text { font-size: 6.5px; font-weight: 900; color: #000000; }
+.court-paper-theme .cr-seal-sub { font-size: 5.5px; color: #4B5563; }
+.court-paper-theme .cr-seal-valid { font-size: 5.5px; font-weight: 900; color: #15803D; }
+.court-paper-theme .cr-legal-notice {
+  font-size: 8px;
+  color: #4B5563;
+  text-align: justify;
+  margin-top: 14px;
+  border-top: 1px solid #D1D5DB;
+  padding-top: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PRINT STYLESHEET (@media print)
+   Flawless Court Report PDF & Physical Print Execution
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm 14mm 14mm;
+  }
+
+  /* Reset global viewport & remove overflow clipping */
+  html, body, #root, .nbe-page {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide UI elements that do not belong in a formal court report */
+  .no-print,
+  aside,
+  nav,
+  header,
+  .sidebar,
+  .nbe-header,
+  .nbe-card,
+  .nbe-toolbar,
+  .react-flow__controls,
+  .react-flow__minimap,
+  .react-flow__attribution {
+    display: none !important;
+  }
+
+  /* Make sure main app container doesn't constrain or scroll */
+  main {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #FFFFFF !important;
+  }
+
+  /* Ensure the court report document takes full width and uses crisp print styling */
+  .court-report-wrapper {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .court-report-document {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-family: 'Times New Roman', Times, Georgia, serif !important;
+  }
+
+  /* Apply court paper theme rules unconditionally on print */
+  .cr-header-section {
+    border-bottom: 2px solid #000000 !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 16px !important;
+  }
+  .cr-header-top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+  }
+  .cr-emblem-badge {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  .cr-institution-name {
+    color: #000000 !important;
+    font-size: 16px !important;
+    font-weight: 900 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-division-name {
+    color: #374151 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-classification-badge {
+    background: #FEE2E2 !important;
+    border: 1px solid #DC2626 !important;
+    padding: 4px 10px !important;
+    border-radius: 3px !important;
+    text-align: right !important;
+  }
+  .cr-classification-label {
+    font-size: 8px !important;
+    font-weight: 900 !important;
+    color: #991B1B !important;
+  }
+  .cr-classification-status {
+    font-size: 9px !important;
+    font-weight: 900 !important;
+    color: #B91C1C !important;
+  }
+  .cr-main-title {
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    text-align: center !important;
+    margin: 10px 0 2px 0 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-sub-title {
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    color: #1F2937 !important;
+    text-align: center !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-statutory-cite {
+    font-size: 9px !important;
+    color: #4B5563 !important;
+    text-align: center !important;
+    font-style: italic !important;
+  }
+  .cr-docket-table {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 4px !important;
+    background: #F9FAFB !important;
+    border: 1px solid #9CA3AF !important;
+    padding: 8px 12px !important;
+    margin-top: 10px !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-docket-key {
+    font-size: 8.5px !important;
+    font-weight: 900 !important;
+    color: #374151 !important;
+  }
+  .cr-docket-val {
+    font-size: 10px !important;
+    color: #000000 !important;
+  }
+  .cr-target-addr {
+    font-family: 'Courier New', monospace !important;
+    color: #000000 !important;
+    font-weight: 800 !important;
+  }
+  .cr-ev-status {
+    color: #15803D !important;
+    font-weight: 800 !important;
+  }
+
+  /* Strict Page Break and Layout Controls */
+  .cr-section {
+    margin-bottom: 18px !important;
+    border: none !important;
+    border-bottom: 1px solid #D1D5DB !important;
+    padding: 0 0 14px 0 !important;
+    background: #FFFFFF !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .cr-section-header {
+    border-bottom: 1.5px solid #000000 !important;
+    padding-bottom: 4px !important;
+    margin-bottom: 8px !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-sec-num {
+    background: #000000 !important;
+    color: #FFFFFF !important;
+    font-size: 8px !important;
+    font-weight: 900 !important;
+    padding: 1px 5px !important;
+  }
+  .cr-sec-title {
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  .cr-paragraph {
+    font-size: 10.5px !important;
+    color: #111827 !important;
+    line-height: 1.5 !important;
+    margin-bottom: 6px !important;
+  }
+  .cr-truth-declaration {
+    background: #F3F4F6 !important;
+    border-left: 3px solid #000000 !important;
+    padding: 6px 10px !important;
+    color: #000000 !important;
+    font-size: 10px !important;
+  }
+
+  /* Tables & Ledger */
+  .cr-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9px !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-table th {
+    background: #E5E7EB !important;
+    color: #000000 !important;
+    font-weight: 900 !important;
+    padding: 5px 6px !important;
+    border: 1px solid #9CA3AF !important;
+  }
+  .cr-table td {
+    padding: 5px 6px !important;
+    border: 1px solid #D1D5DB !important;
+    color: #000000 !important;
+  }
+  .cr-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+  .cr-table-wrap {
+    border: 1px solid #9CA3AF !important;
+    margin-top: 4px !important;
+    overflow: visible !important;
+  }
+
+  /* Two Column Grids & Cards */
+  .cr-two-col-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+  .cr-card {
+    border: 1px solid #9CA3AF !important;
+    background: #FFFFFF !important;
+    padding: 8px 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-card-title {
+    font-size: 9.5px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+    border-bottom: 1px solid #D1D5DB !important;
+    padding-bottom: 4px !important;
+    margin-bottom: 6px !important;
+  }
+  .cr-kv-item {
+    font-size: 9px !important;
+  }
+  .cr-k { color: #4B5563 !important; font-weight: 700 !important; }
+  .cr-v { color: #000000 !important; font-weight: 600 !important; }
+  .cr-mono-small { font-family: 'Courier New', monospace !important; font-size: 8.5px !important; }
+
+  /* Sub sections (3 stages) */
+  .cr-sub-section {
+    border: 1px solid #D1D5DB !important;
+    background: #F9FAFB !important;
+    padding: 8px 10px !important;
+    margin-bottom: 8px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-sub-badge {
+    background: #000000 !important;
+    color: #FFFFFF !important;
+    font-size: 7.5px !important;
+    font-weight: 900 !important;
+  }
+  .cr-sub-title-text {
+    font-size: 10.5px !important;
+    font-weight: 800 !important;
+    color: #000000 !important;
+  }
+  .cr-sub-score-text {
+    font-size: 9px !important;
+    color: #4B5563 !important;
+  }
+  .cr-finding-item {
+    font-size: 9.5px !important;
+    color: #111827 !important;
+  }
+  .cr-chip {
+    background: #E5E7EB !important;
+    border: 1px solid #9CA3AF !important;
+    color: #000000 !important;
+    font-size: 8px !important;
+  }
+
+  /* Verdict box in print */
+  .cr-verdict-banner {
+    border: 1.5px solid #000000 !important;
+    background: #F9FAFB !important;
+    padding: 10px 12px !important;
+    margin-bottom: 10px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-verdict-score-box {
+    width: 50px !important;
+    height: 50px !important;
+    border: 1.5px solid #000000 !important;
+    background: #FFFFFF !important;
+  }
+  .cr-verdict-score-val {
+    font-size: 18px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  .cr-threat-classification {
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  .cr-verdict-summary-text {
+    font-size: 10px !important;
+    color: #1F2937 !important;
+  }
+  .cr-verdict-rec-label {
+    font-size: 8.5px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  .cr-verdict-rec-val {
+    font-size: 9.5px !important;
+    color: #111827 !important;
+  }
+
+  /* Digest & Signatures */
+  .cr-digest-container {
+    border: 1px solid #9CA3AF !important;
+    background: #F9FAFB !important;
+    padding: 8px 10px !important;
+    margin-bottom: 12px !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-digest-header {
+    font-size: 8px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  .cr-digest-status {
+    color: #15803D !important;
+  }
+  .cr-digest-value {
+    font-family: 'Courier New', monospace !important;
+    font-size: 8px !important;
+    color: #000000 !important;
+    background: #FFFFFF !important;
+    border: 1px solid #D1D5DB !important;
+    padding: 4px 6px !important;
+  }
+  .cr-digest-footer {
+    font-size: 7.5px !important;
+    color: #4B5563 !important;
+  }
+  .cr-signatures-grid {
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr !important;
+    gap: 12px !important;
+    align-items: center !important;
+    margin-top: 14px !important;
+    padding-top: 8px !important;
+    border-top: 1.5px solid #000000 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+  .cr-sig-line {
+    height: 1.5px !important;
+    background: #000000 !important;
+    margin: 14px auto 4px auto !important;
+  }
+  .cr-sig-name {
+    font-size: 9.5px !important;
+    font-weight: 900 !important;
+    color: #000000 !important;
+  }
+  .cr-sig-title {
+    font-size: 8.5px !important;
+    font-weight: 700 !important;
+    color: #374151 !important;
+  }
+  .cr-sig-dept {
+    font-size: 7.5px !important;
+    color: #6B7280 !important;
+  }
+  .cr-sig-id {
+    font-size: 7.5px !important;
+    color: #9CA3AF !important;
+  }
+  .cr-official-seal {
+    width: 70px !important;
+    height: 70px !important;
+    border: 2px solid #000000 !important;
+    border-radius: 50% !important;
+    padding: 2px !important;
+  }
+  .cr-seal-text { font-size: 6px !important; font-weight: 900 !important; color: #000000 !important; }
+  .cr-seal-sub { font-size: 5px !important; color: #4B5563 !important; }
+  .cr-seal-valid { font-size: 5px !important; font-weight: 900 !important; color: #15803D !important; }
+  .cr-legal-notice {
+    font-size: 7.5px !important;
+    color: #4B5563 !important;
+    margin-top: 10px !important;
+    border-top: 1px solid #D1D5DB !important;
+    padding-top: 4px !important;
+  }
+}
+

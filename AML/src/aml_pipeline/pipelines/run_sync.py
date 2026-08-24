@@ -40,16 +40,16 @@ def _verify(cfg):
         neo4j_addr = session.run("MATCH (a:Address) RETURN count(a) AS c").single()["c"]
     driver.close()
 
-    print("\n── Database Sync Verification ──────────────────────────")
+    print("\n== Database Sync Verification ==========================")
     print(f"  MySQL  transactions : {mysql_tx:>8}")
-    print(f"  Neo4j  TRANSFER rels: {neo4j_tx:>8}  {'✅ in sync' if mysql_tx == neo4j_tx else '⚠️  out of sync'}")
+    print(f"  Neo4j  TRANSFER rels: {neo4j_tx:>8}  {'[OK] in sync' if mysql_tx == neo4j_tx else '[WARN] out of sync'}")
     print(f"  MySQL  addresses    : {mysql_addr:>8}")
-    print(f"  Neo4j  Address nodes: {neo4j_addr:>8}  {'✅ in sync' if mysql_addr == neo4j_addr else '⚠️  out of sync'}")
-    print("────────────────────────────────────────────────────────\n")
+    print(f"  Neo4j  Address nodes: {neo4j_addr:>8}  {'[OK] in sync' if mysql_addr == neo4j_addr else '[WARN] out of sync'}")
+    print("========================================================\n")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Sync MySQL transactions → Neo4j")
+    parser = argparse.ArgumentParser(description="Sync MySQL transactions -> Neo4j")
     parser.add_argument(
         "--full",
         action="store_true",
@@ -78,7 +78,7 @@ def main():
 
     sync_new_only = not args.full
     mode = "incremental" if sync_new_only else "full"
-    logger.info("Starting MySQL → Neo4j sync (mode=%s)", mode)
+    logger.info("Starting MySQL -> Neo4j sync (mode=%s)", mode)
 
     summary = mysql_to_neo4j_sync(
         cfg=cfg,
@@ -86,11 +86,11 @@ def main():
         sync_new_only=sync_new_only,
     )
 
-    print(f"\n── MySQL → Neo4j Sync Complete ({mode}) ──────────────────")
+    print(f"\n== MySQL -> Neo4j Sync Complete ({mode}) =================")
     print(f"  Rows synced          : {summary['rows_synced']}")
     print(f"  Already in Neo4j     : {summary['rows_already_in_neo4j']}")
     print(f"  Total in Neo4j graph : {summary.get('graph_total', '?')}")
-    print("────────────────────────────────────────────────────────\n")
+    print("========================================================\n")
 
 
 if __name__ == "__main__":

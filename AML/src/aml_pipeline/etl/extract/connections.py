@@ -12,9 +12,21 @@ from ...utils.connections import (
 
 
 def get_web3(cfg: Config | None = None) -> Web3:
-    """Create and validate a Web3 client for the configured RPC."""
+    """Create and validate a Web3 client with connection pooling for the configured RPC."""
+    import requests
+    from requests.adapters import HTTPAdapter
+
     cfg = cfg or load_config()
-    w3 = Web3(Web3.HTTPProvider(cfg.eth_rpc_url))
+    session = requests.Session()
+    adapter = HTTPAdapter(
+        pool_connections=50,
+        pool_maxsize=50,
+        max_retries=3,
+    )
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    w3 = Web3(Web3.HTTPProvider(cfg.eth_rpc_url, session=session, request_kwargs={"timeout": 60}))
     if not w3.is_connected():
         raise ConnectionError("Web3 provider not connected")
     return w3

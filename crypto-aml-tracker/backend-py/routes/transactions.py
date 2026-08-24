@@ -96,7 +96,7 @@ def _latest_transactions_sql(sort_by: str = "amount_desc", chain: str | None = N
 async def get_latest_transactions(
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    sort_by: Literal["value_usd_desc", "amount_desc", "latest"] = Query("amount_desc"),
+    sort_by: str = Query("value_usd_desc"),
     chain: str | None = Query(None),
 ):
     _require_mysql()

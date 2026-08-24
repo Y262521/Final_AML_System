@@ -35,11 +35,19 @@ async function _post(url, body = {}) {
  * Get latest transactions (feed).
  * @param {{ limit?: number, offset?: number, sortBy?: 'value_usd_desc' | 'amount_desc' | 'latest', chain?: string }} opts
  */
-export const getLatestTransactions = ({ limit = 200, offset = 0, sortBy = 'value_usd_desc', chain } = {}) => {
+export const getLatestTransactions = async ({ limit = 200, offset = 0, sortBy = 'value_usd_desc', chain } = {}) => {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset), sort_by: sortBy });
   if (chain && chain !== 'all') params.set('chain', chain);
-  // Use explicit trailing slash to match FastAPI route and avoid 307 redirect
-  return _get(`${API_BASE}/transactions/?${params}`);
+  try {
+    return await _get(`${API_BASE}/transactions/?${params}`);
+  } catch (err) {
+    if (sortBy === 'value_usd_desc') {
+      const fallbackParams = new URLSearchParams({ limit: String(limit), offset: String(offset), sort_by: 'amount_desc' });
+      if (chain && chain !== 'all') fallbackParams.set('chain', chain);
+      return await _get(`${API_BASE}/transactions/?${fallbackParams}`);
+    }
+    throw err;
+  }
 };
 
 /**
@@ -113,8 +121,14 @@ export const getPlacementRuns = () => _get(`${API_BASE}/placement/runs`);
 
 /**
  * Get placement summary.
+ * @param {{ runId?: string, beforeDate?: string }} opts
  */
-export const getPlacementSummary = () => _get(`${API_BASE}/placement/summary`);
+export const getPlacementSummary = ({ runId, beforeDate } = {}) => {
+  const params = new URLSearchParams();
+  if (runId) params.set('run_id', runId);
+  if (beforeDate) params.set('beforeDate', beforeDate);
+  return _get(`${API_BASE}/placement/summary?${params}`);
+};
 
 /**
  * Get placement alerts.
@@ -201,3 +215,41 @@ export const getChainOfCustody = (entityId) => _get(`${API_BASE}/chain-of-custod
  * @param {object} feedback
  */
 export const postIntegrationFeedback = (entityId, feedback) => _post(`${API_BASE}/chain-of-custody/${entityId}/feedback`, feedback);
+
+// ── Database Labels & Evaluation ────────────────────────────────────────────────
+
+/**
+ * Pull labeled wallet addresses directly from the database table (wallet_labels).
+ * @param {{ label?: string, category?: string, chain?: string, source?: string, limit?: number }} opts
+ */
+export const getDatabaseLabels = ({ label, category, chain, source, limit = 1000 } = {}) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (label) params.set('label', label);
+  if (category) params.set('category', category);
+  if (chain) params.set('chain', chain);
+  if (source) params.set('source', source);
+  return _get(`${API_BASE}/testing/labels?${params}`);
+};
+
+/**
+ * Synchronize / seed ground truth and owner registry labels directly into the database.
+ * @param {Array} wallets
+ */
+export const syncDatabaseLabels = (wallets = null) => _post(`${API_BASE}/testing/labels/sync`, { wallets });
+
+/**
+ * Run evaluation directly against database-labeled addresses.
+ * @param {{ label?: string, category?: string, chain?: string, source?: string, limit?: number }} opts
+ */
+export const evaluateFromDatabase = (opts = {}) => _post(`${API_BASE}/testing/evaluate-from-db`, opts);
+
+/**
+ * Pull labels from database and automatically relabel all wallet clusters.
+ */
+export const syncClusterLabelsFromDb = () => _post(`${API_BASE}/clusters/sync-labels-from-db`);
+
+/**
+ * Get all owner labels and address mappings from database.
+ */
+export const getAllClusterLabels = () => _get(`${API_BASE}/clusters/labels/all`);
+

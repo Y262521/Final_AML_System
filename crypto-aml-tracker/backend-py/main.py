@@ -18,6 +18,8 @@ from routes.integration import ensure_integration_schema, router as integration_
 from routes.chain_of_custody import router as custody_router
 from routes.mva import ensure_mva_schema, router as mva_router
 from routes.mvrv import router as mvrv_router
+from routes.testing import ensure_testing_schema, router as testing_router
+from routes.wallet_investigator import router as wallet_investigator_router
 from services.mvrv_calculator import _ensure_hist_price_schema, warm_hist_price_cache
 from scheduler import create_scheduler, get_next_run_time, pipeline_status
 from settings import get_env
@@ -40,6 +42,7 @@ async def lifespan(app: FastAPI):
         await asyncio.to_thread(ensure_placement_schema)
         await asyncio.to_thread(ensure_layering_schema)
         await asyncio.to_thread(ensure_integration_schema)
+        await ensure_testing_schema()
         # ensure_mva_schema is async — await it directly
         await ensure_mva_schema()
         await _ensure_hist_price_schema()
@@ -82,6 +85,8 @@ app.include_router(integration_router, prefix="/api/integration")
 app.include_router(custody_router,     prefix="/api/chain-of-custody")
 app.include_router(mva_router,         prefix="/api/mva")
 app.include_router(mvrv_router,        prefix="/api/mvrv")
+app.include_router(testing_router,     prefix="/api/testing")
+app.include_router(wallet_investigator_router, prefix="/api/wallet-investigator")
 
 
 @app.get("/api/status")
@@ -112,6 +117,9 @@ async def get_databases_health():
 
 if __name__ == "__main__":
     import uvicorn
+    from pathlib import Path
     port = int(get_env("PORT", default="4000"))
     host = get_env("HOST", default="0.0.0.0")
-    uvicorn.run("main:app", host=host, port=port, reload=True)
+    app_dir = str(Path(__file__).resolve().parent)
+    uvicorn.run("main:app", host=host, port=port, reload=True, reload_dirs=[app_dir])
+

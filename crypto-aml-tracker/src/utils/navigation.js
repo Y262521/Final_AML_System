@@ -1,5 +1,6 @@
 export const PAGE_ROUTES = Object.freeze({
   feed: '/',
+  'wallet-investigator': '/wallet-investigator',
   placement: '/placement',
   layering: '/layering',
   integration: '/integration',
@@ -9,6 +10,7 @@ export const PAGE_ROUTES = Object.freeze({
   analytics: '/analytics',
   risk: '/risk',
   'etl-control': '/etl-control',
+  testing: '/testing',
   'coming-soon': '/coming-soon',
 })
 

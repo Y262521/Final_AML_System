@@ -32,7 +32,9 @@ import time
 from datetime import datetime, timezone
 from typing import Any, Optional, Tuple
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
+from requests.adapters import HTTPAdapter
 
 from ...chains.registry import get_chain, BLOCKCHAIN_TYPE_ACCOUNT
 from ...config import Config, load_config
@@ -68,6 +70,16 @@ class SolanaExtractor(BaseExtractor):
         super().__init__(cfg)
         self.chain_config = get_chain("solana")
         self._rpc_url = self._resolve_rpc_url(rpc_url)
+
+        # Connection pooling session
+        self.session = requests.Session()
+        adapter = HTTPAdapter(
+            pool_connections=20,
+            pool_maxsize=20,
+            max_retries=3,
+        )
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
 
         # MongoDB — shared collections
         mongo_client = get_mongo_client(self.cfg)
@@ -149,7 +161,7 @@ class SolanaExtractor(BaseExtractor):
     # ── JSON-RPC helpers ──────────────────────────────────────────────────────
 
     def _rpc(self, method: str, params: list, retries: int = 3) -> Any:
-        """Send a Solana JSON-RPC request."""
+        """Send a Solana JSON-RPC request using pooled session."""
         payload = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -159,7 +171,7 @@ class SolanaExtractor(BaseExtractor):
         last_exc = None
         for attempt in range(1, retries + 1):
             try:
-                resp = requests.post(
+                resp = self.session.post(
                     self._rpc_url,
                     json=payload,
                     timeout=120,           # 2 min — Solana getBlock can be large
@@ -187,7 +199,7 @@ class SolanaExtractor(BaseExtractor):
             except Exception as exc:
                 last_exc = exc
                 logger.warning("[solana] RPC attempt %d failed: %s", attempt, exc)
-                time.sleep(1.0 * attempt)
+                time.sleep(0.5 * attempt)
 
         raise RuntimeError(f"[solana] RPC {method} failed after {retries} attempts: {last_exc}")
 
@@ -621,30 +633,54 @@ class SolanaExtractor(BaseExtractor):
         logger.info("[solana] Fetching slots %d -> %d", from_slot, to_slot)
 
         total_transfers = 0
-        for slot in range(from_slot, to_slot + 1):
+        slots_to_fetch = list(range(from_slot, to_slot + 1))
+        fetched_docs = []
+
+        if len(slots_to_fetch) > 1:
+            with ThreadPoolExecutor(max_workers=min(batch_size, 5)) as slot_exec:
+                future_to_s = {
+                    slot_exec.submit(self.fetch_block, s): s
+                    for s in slots_to_fetch
+                }
+                for fut in as_completed(future_to_s):
+                    s_num = future_to_s[fut]
+                    try:
+                        raw_data = fut.result()
+                        fetched_docs.append((s_num, raw_data))
+                    except RuntimeError as exc:
+                        err_str = str(exc)
+                        if "null (skipped slot)" in err_str or "slot was skipped" in err_str.lower():
+                            logger.debug("[solana] Slot %d skipped (empty/skipped slot)", s_num)
+                        else:
+                            logger.warning("[solana] Slot %d error: %s", s_num, exc)
+                    except Exception as exc:
+                        logger.warning("[solana] Slot %d failed: %s", s_num, exc)
+            fetched_docs.sort(key=lambda x: x[0])
+        else:
             try:
-                raw_data = self.fetch_block(slot)
-                self.save_to_local_backup(raw_data, slot)
-                count = self.save_to_db(raw_data)
-                total_transfers += count
-                logger.info(
-                    "[solana] Slot %d: %d txs -> %d transfers",
-                    slot, raw_data.get("transaction_count", 0), count,
-                )
+                raw_data = self.fetch_block(from_slot)
+                fetched_docs.append((from_slot, raw_data))
             except RuntimeError as exc:
                 err_str = str(exc)
                 if "null (skipped slot)" in err_str or "slot was skipped" in err_str.lower():
-                    logger.debug("[solana] Slot %d skipped (empty/skipped slot)", slot)
+                    logger.debug("[solana] Slot %d skipped (empty/skipped slot)", from_slot)
                 else:
-                    logger.warning("[solana] Slot %d error: %s", slot, exc)
+                    logger.warning("[solana] Slot %d error: %s", from_slot, exc)
             except Exception as exc:
-                logger.warning("[solana] Slot %d failed: %s", slot, exc)
-                logger.debug("[solana] Slot %d traceback:", slot, exc_info=True)
-            time.sleep(0.25)
+                logger.warning("[solana] Slot %d failed: %s", from_slot, exc)
+
+        for slot, raw_data in fetched_docs:
+            self.save_to_local_backup(raw_data, slot)
+            count = self.save_to_db(raw_data)
+            total_transfers += count
+            logger.info(
+                "[solana] Slot %d: %d txs -> %d transfers",
+                slot, raw_data.get("transaction_count", 0), count,
+            )
 
         msg = (
             f"[solana] Saved slots {from_slot} -> {to_slot} "
-            f"({to_slot - from_slot + 1} slots, {total_transfers} transfers)"
+            f"({len(fetched_docs)} slots, {total_transfers} transfers)"
         )
         print(msg)
         logger.info(msg)

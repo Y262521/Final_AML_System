@@ -9,6 +9,12 @@ UTXO chains (bitcoin, litecoin, dogecoin, bitcoin_cash):
 
 Account-based chains (solana):
     → SolanaExtractor (Phase 4)
+
+Data sources (source= param, default "alchemy" preserves original behavior):
+    alchemy   → RPC-based extractors above (EVMExtractor / UTXOExtractor / SolanaExtractor)
+    sqd       → SQDExtractor (Subsquid Portal — 200+ networks, no API key)
+    aws_s3    → AWSPublicBlockchainExtractor (AWS Open Data, no credentials)
+    bigquery  → BigQueryExtractor (Google BigQuery public datasets, needs GCP project)
 """
 
 from __future__ import annotations
@@ -24,47 +30,75 @@ from ...chains.registry import (
 from ...config import Config
 from .base import BaseExtractor
 
+SUPPORTED_SOURCES = {"alchemy", "aws_s3", "sqd", "bigquery"}
 
-def get_extractor(chain: str, cfg: Optional[Config] = None) -> BaseExtractor:
+
+def get_extractor(chain: str, cfg: Optional[Config] = None, source: str = "alchemy") -> BaseExtractor:
     """
-    Return a chain-specific extractor instance by chain name.
+    Return a chain-specific extractor instance by chain name and data source.
 
-    Supported EVM chains (all use EVMExtractor):
-        ethereum, bnb, polygon, arbitrum, base
+    source="alchemy" (default): unchanged original behavior — RPC-based
+    extractors below.
+        Supported EVM chains (all use EVMExtractor):
+            ethereum, bnb, polygon, arbitrum, base
+        UTXO chains (Phase 3):
+            bitcoin, litecoin, dogecoin, bitcoin_cash
+        Account-based (Phase 4):
+            solana
 
-    UTXO chains (Phase 3):
-        bitcoin, litecoin, dogecoin, bitcoin_cash
+    source="sqd": SQDExtractor — widest chain coverage (200+ networks),
+        no API key required.
 
-    Account-based (Phase 4):
-        solana
+    source="aws_s3": AWSPublicBlockchainExtractor — bitcoin, ethereum,
+        arbitrum, base; no credentials required (public dataset).
 
-    Raises ValueError for unknown chains.
+    source="bigquery": BigQueryExtractor — ethereum, bitcoin, litecoin,
+        dogecoin; requires BIGQUERY_PROJECT + GOOGLE_APPLICATION_CREDENTIALS.
+
+    Raises ValueError for unknown chains or unknown sources.
     """
+    source = source.lower().strip()
+    if source not in SUPPORTED_SOURCES:
+        raise ValueError(f"Unknown source: {source!r}. Supported: {sorted(SUPPORTED_SOURCES)}")
+
     chain = chain.lower().strip()
+
+    _alias_map = {
+        "eth":     "ethereum",
+        "bsc":     "bnb",
+        "binance": "bnb",
+        "matic":   "polygon",
+        "pol":     "polygon",
+        "btc":     "bitcoin",
+        "ltc":     "litecoin",
+        "doge":    "dogecoin",
+        "bch":     "bitcoin_cash",
+        "sol":     "solana",
+    }
+    canonical = _alias_map.get(chain, chain)
+
+    # ── Non-Alchemy sources ──────────────────────────────────────────────────
+    if source == "sqd":
+        from .sqd import SQDExtractor
+        return SQDExtractor(cfg=cfg, chain=canonical)
+
+    if source == "aws_s3":
+        from .aws_s3 import AWSPublicBlockchainExtractor
+        return AWSPublicBlockchainExtractor(cfg=cfg, chain=canonical)
+
+    if source == "bigquery":
+        from .bigquery import BigQueryExtractor
+        return BigQueryExtractor(cfg=cfg, chain=canonical)
+
+    # ── source == "alchemy" -> original RPC-based routing, unchanged ────────
 
     # ── EVM chains ────────────────────────────────────────────────────────────
     if chain in EVM_CHAIN_NAMES or chain in {"eth", "binance", "bsc", "matic", "pol"}:
-        # Normalize aliases
-        _alias_map = {
-            "eth":     "ethereum",
-            "bsc":     "bnb",
-            "binance": "bnb",
-            "matic":   "polygon",
-            "pol":     "polygon",
-        }
-        canonical = _alias_map.get(chain, chain)
         from .evm import EVMExtractor
         return EVMExtractor(cfg=cfg, chain=canonical)
 
     # ── UTXO chains ───────────────────────────────────────────────────────────
     if chain in UTXO_CHAIN_NAMES or chain in {"btc", "ltc", "doge", "bch"}:
-        _alias_map = {
-            "btc":  "bitcoin",
-            "ltc":  "litecoin",
-            "doge": "dogecoin",
-            "bch":  "bitcoin_cash",
-        }
-        canonical = _alias_map.get(chain, chain)
         try:
             from .utxo import UTXOExtractor
             return UTXOExtractor(cfg=cfg, chain=canonical)
@@ -76,7 +110,6 @@ def get_extractor(chain: str, cfg: Optional[Config] = None) -> BaseExtractor:
 
     # ── Account-based non-EVM ─────────────────────────────────────────────────
     if chain in ACCOUNT_CHAIN_NAMES or chain == "sol":
-        canonical = "solana" if chain == "sol" else chain
         try:
             from .solana import SolanaExtractor
             return SolanaExtractor(cfg=cfg)

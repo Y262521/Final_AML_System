@@ -3,6 +3,7 @@ const SECTIONS = [
     title: 'Overview',
     items: [
       { id: 'feed', label: 'Transaction Table', icon: '▦' },
+      { id: 'wallet-investigator', label: 'Wallet Extraction', icon: '⚡' },
       { id: 'clusters', label: 'Wallet Clusters', icon: '⬡' },
     ],
   },
@@ -18,12 +19,13 @@ const SECTIONS = [
     title: 'Infrastructure',
     items: [
       { id: 'etl-control', label: 'ETL Control Center', icon: '⛓' },
+      { id: 'testing', label: 'Testing & Evaluation', icon: '🧪' },
     ],
   },
 ];
 
 const Sidebar = ({ activePage, onNavigate, onHome }) => (
-  <div style={{ width: '220px', minWidth: '220px', height: '100vh', background: '#0F1829', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(201,168,76,0.14)', flexShrink: 0 }}>
+  <div className="sidebar no-print" style={{ width: '220px', minWidth: '220px', height: '100vh', background: '#0F1829', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(201,168,76,0.14)', flexShrink: 0 }}>
     <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(201,168,76,0.14)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
       <img src="/logo.png" alt="NBE" style={{ width: '52px', height: '52px', objectFit: 'contain' }} />
       <div style={{ textAlign: 'center' }}>

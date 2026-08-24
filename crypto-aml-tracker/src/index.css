@@ -119,3 +119,18 @@ tbody tr {
 .react-flow__attribution a {
   color: #4B5E72 !important;
 }
+
+/* Global Print Media Viewport Reset */
+@media print {
+  html,
+  body,
+  #root {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+}
+

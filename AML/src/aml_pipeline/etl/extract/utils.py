@@ -229,15 +229,21 @@ def build_flat_transaction_documents(raw_document: dict, network: str) -> list[d
     return documents
 
 
-def rpc_call_with_retry(fn, retries: int = 3, delay: float = 0.5):
-    """Execute an RPC call with retries and a fixed delay."""
+def rpc_call_with_retry(fn, retries: int = 5, delay: float = 0.5):
+    """Execute an RPC call with retries and exponential backoff on rate limits (429)."""
     last_exc = None
     for attempt in range(1, retries + 1):
         try:
             return fn()
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
-            logger.warning("RPC error on attempt %s: %s", attempt, exc)
-            time.sleep(delay)
+            exc_str = str(exc)
+            if "429" in exc_str or "Too Many Requests" in exc_str or "rate limit" in exc_str.lower():
+                wait = min(8.0, (1.5 ** attempt) + (0.1 * attempt))
+                logger.warning("Rate limit (429) on attempt %s, backing off for %.1fs", attempt, wait)
+                time.sleep(wait)
+            else:
+                logger.warning("RPC error on attempt %s: %s", attempt, exc)
+                time.sleep(delay * attempt)
     logger.error("RPC failed after %s attempts", retries)
     raise last_exc

@@ -17,8 +17,11 @@ from ...utils.connections import get_maria_engine
 from ..placement import PlacementAnalysisEngine, PlacementAnalysisResult
 from .detectors import (
     BridgeHoppingDetector,
+    FanInAggregationDetector,
+    FanOutDispersionDetector,
     HighDepthTransactionChainingDetector,
     MixingInteractionDetector,
+    PassThroughDetector,
     PeelingChainDetector,
     ShellWalletNetworkDetector,
 )
@@ -49,6 +52,9 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
         super().__init__(cfg=cfg, chain_name=chain_name)
         self._service_registry_override = service_registry
         self.detectors = [
+            PassThroughDetector(),
+            FanOutDispersionDetector(),
+            FanInAggregationDetector(),
             PeelingChainDetector(),
             MixingInteractionDetector(),
             BridgeHoppingDetector(),
@@ -89,14 +95,6 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
             entities,
             address_to_entity,
         )
-        seeds = self._build_seeds(
-            entities=entities,
-            address_to_entity=address_to_entity,
-            placement_result=placement_result,
-            seed_entity_ids=seed_entity_ids,
-            seed_addresses=seed_addresses,
-        )
-
         service_registry = self._service_registry_override or load_service_registry(self.cfg)
         tx_by_hash = {tx.tx_hash: tx for tx in transactions if tx.tx_hash}
         address_first_seen, address_last_seen, address_degree, address_tx_count = self._build_address_stats(
@@ -112,6 +110,18 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
             address_tx_count=address_tx_count,
         )
         entity_labels = self._build_entity_labels(entities, address_labels)
+
+        seeds = self._build_seeds(
+            entities=entities,
+            address_to_entity=address_to_entity,
+            placement_result=placement_result,
+            seed_entity_ids=seed_entity_ids,
+            seed_addresses=seed_addresses,
+            address_first_seen=address_first_seen,
+            address_last_seen=address_last_seen,
+            address_degree=address_degree,
+            address_tx_count=address_tx_count,
+        )
 
         context = LayeringContext(
             cfg=self.cfg,
@@ -151,7 +161,7 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
         detections = self._dedupe_detections(detections)
         evidence = self._dedupe_evidence(evidence)
         bridge_pairs = self._dedupe_bridge_pairs(bridge_pairs)
-        alerts = self._build_alerts(seeds, detections, evidence, bridge_pairs)
+        alerts = self._build_alerts(seeds, detections, evidence, bridge_pairs, entities=entities)
         summary = self._build_summary(
             source=source,
             placement_run_id=None if placement_result is None else placement_result.run_id,
@@ -241,6 +251,10 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
         placement_result: PlacementAnalysisResult | None,
         seed_entity_ids: list[str] | None,
         seed_addresses: list[str] | None,
+        address_first_seen: dict[str, float] | None = None,
+        address_last_seen: dict[str, float] | None = None,
+        address_degree: dict[str, int] | None = None,
+        address_tx_count: dict[str, int] | None = None,
     ) -> dict[str, LayeringSeed]:
         seeds: dict[str, LayeringSeed] = {}
         min_seed_confidence = max(0.0, float(self.cfg.layering_min_seed_confidence or 0.55))
@@ -306,7 +320,39 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
                 metrics={"seed_source": "manual"},
             )
 
-        logger.info("Layering analysis selected %d seed entities", len(seeds))
+        # 3. Independent Graph & High-Activity Wallet Seeding:
+        # If no explicit manual seeds were provided, seed all entities in the graph so layering runs across all transactions in DB
+        if not seed_entity_ids and not seed_addresses:
+            _tx_count = address_tx_count or {}
+            _degree = address_degree or {}
+            _first_seen = address_first_seen or {}
+            _last_seen = address_last_seen or {}
+
+            for entity_id, entity in entities.items():
+                if entity_id in seeds:
+                    continue
+                entity_txs = sum(_tx_count.get(addr, 0) for addr in entity.addresses)
+                entity_deg = max((_degree.get(addr, 0) for addr in entity.addresses), default=0)
+                f_ts = min((_first_seen[addr] for addr in entity.addresses if addr in _first_seen), default=None)
+                l_ts = max((_last_seen[addr] for addr in entity.addresses if addr in _last_seen), default=None)
+
+                seeds[entity_id] = LayeringSeed(
+                    entity_id=entity.entity_id,
+                    entity_type=entity.entity_type,
+                    addresses=list(entity.addresses),
+                    placement_score=0.0,
+                    placement_confidence=0.0,
+                    placement_behaviors=[],
+                    first_seen_at=datetime.fromtimestamp(f_ts, timezone.utc).isoformat() if f_ts else None,
+                    last_seen_at=datetime.fromtimestamp(l_ts, timezone.utc).isoformat() if l_ts else None,
+                    metrics={
+                        "seed_source": "graph_activity",
+                        "tx_count": entity_txs,
+                        "degree": entity_deg,
+                    },
+                )
+
+        logger.info("Layering analysis selected %d seed entities (including graph-wide candidates)", len(seeds))
         return seeds
 
     def _match_entity_id(
@@ -439,7 +485,9 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
         detections: list[Any],
         evidence: list[Any],
         bridge_pairs: list[Any],
+        entities: dict[str, Any] | None = None,
     ) -> list[LayeringAlert]:
+        entities = entities or {}
         evidence_by_entity: dict[str, set[str]] = defaultdict(set)
         for item in evidence:
             evidence_by_entity[item.entity_id].add(item.evidence_id)
@@ -452,7 +500,21 @@ class LayeringAnalysisEngine(PlacementAnalysisEngine):
         alerts: list[LayeringAlert] = []
         for entity_id, hits in grouped.items():
             if entity_id not in seeds:
-                continue
+                if entity_id in entities:
+                    entity = entities[entity_id]
+                    seeds[entity_id] = LayeringSeed(
+                        entity_id=entity.entity_id,
+                        entity_type=entity.entity_type,
+                        addresses=list(entity.addresses),
+                        placement_score=0.0,
+                        placement_confidence=0.0,
+                        placement_behaviors=[],
+                        first_seen_at=None,
+                        last_seen_at=None,
+                        metrics={"seed_source": "auto_detected"},
+                    )
+                else:
+                    continue
             seed = seeds[entity_id]
             ranked_hits = sorted(
                 hits,

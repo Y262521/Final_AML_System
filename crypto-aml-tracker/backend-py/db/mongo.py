@@ -12,7 +12,7 @@ async def connect_mongo():
     mongo_db = get_mongo_db_name()
     client = AsyncIOMotorClient(uri)
     db = client[mongo_db]
-    print(f"MongoDB connected → {mongo_db}")
+    print(f"MongoDB connected -> {mongo_db}")
 
 async def close_mongo():
     global client, db

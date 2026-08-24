@@ -9,7 +9,9 @@ PRIMARY_HEURISTICS = frozenset(
         "behavioral_similarity",
         "repeated_flow",
         "loop_detection",
-        "fan_pattern",
+        "common_funder",
+        "coordinated_cashout",
+        "deposit_address_reuse",
         "temporal_coordination",
         "contract_interaction",
     }
@@ -22,3 +24,4 @@ def should_merge_pair(heuristics_fired: Iterable[str], min_support: int = 2) -> 
     if len(fired) < max(min_support, 1):
         return False
     return bool(fired & PRIMARY_HEURISTICS)
+

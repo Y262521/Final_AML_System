@@ -26,17 +26,17 @@ if not exist "venv\Scripts\python.exe" (
 
 REM Check and install required packages
 echo     Checking required packages...
-venv\Scripts\python.exe -c "import fastapi, pandas, aiomysql, motor, neo4j, apscheduler" 2>nul
+venv\Scripts\python.exe -c "import fastapi, pandas, aiomysql, motor, neo4j, apscheduler, networkx" 2>nul
 if errorlevel 1 (
     echo     Installing required packages...
-    venv\Scripts\pip.exe install fastapi uvicorn motor neo4j sqlalchemy pymysql aiomysql apscheduler python-dotenv cryptography pandas -q
+    venv\Scripts\pip.exe install fastapi uvicorn motor neo4j sqlalchemy pymysql aiomysql apscheduler python-dotenv cryptography pandas networkx scipy reportlab web3 -q
 )
 
 start "AML Backend" cmd /k "cd /d %ROOT%crypto-aml-tracker\backend-py && venv\Scripts\activate.bat && set PORT=%BACKEND_PORT% && python main.py"
 
 cd /d "%ROOT%"
 echo     Backend window opened.
-timeout /t 5 /nobreak >nul
+ping 127.0.0.1 -n 4 >nul
 
 REM ── Start React Frontend ──────────────────────────────────────
 echo [2/2] Starting React Frontend on port 5173...
@@ -51,7 +51,7 @@ if not exist "node_modules" (
 start "AML Frontend" cmd /k "cd /d %ROOT%crypto-aml-tracker && npm run dev"
 cd /d "%ROOT%"
 
-timeout /t 3 /nobreak >nul
+ping 127.0.0.1 -n 3 >nul
 
 echo.
 echo  SYSTEM READY
