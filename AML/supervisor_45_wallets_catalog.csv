@@ -1,0 +1,44 @@
+wallet_address,category,phase,expected_algorithm,scenario_description
+struct_target_alpha,High-Risk,Placement,structuring,Recurring structured transfers ($9850) just below reporting threshold
+struct_target_beta,High-Risk,Placement,structuring,Recurring structured transfers ($9920) just below reporting threshold
+smurf_collector_1,High-Risk,Placement,smurfing,Fan-in smurfing aggregation from 7 unique senders within 12 minutes
+smurf_collector_2,High-Risk,Placement,smurfing,Fan-in smurfing aggregation from 6 unique senders within 10 minutes
+micro_accumulator_1,High-Risk,Placement,micro_funding,Micro-funding accumulation from 10 consecutive micro-deposits
+bridge_trader_eth,High-Risk,Layering,bridge_hopping,Bridge hopping deposit originator moving $75k across Synapse Bridge
+synapse_bridge_contract,High-Risk,Layering,bridge_hopping,Cross-chain bridge router contract
+bridge_recipient_arb,High-Risk,Layering,bridge_hopping,Bridge hopping withdrawal recipient on Arbitrum
+layerzero_hopper_1,High-Risk,Layering,bridge_hopping,Cross-chain bridge user routing $45k via Stargate Router
+stargate_bridge_router,High-Risk,Layering,bridge_hopping,Cross-chain Stargate bridge router contract
+layerzero_hopper_poly,High-Risk,Layering,bridge_hopping,Cross-chain Stargate withdrawal recipient on Polygon
+chain_genesis_node,High-Risk,Layering,high_depth_transaction_chaining,Originator of 5-hop high-depth rapid transaction forwarding chain
+chain_transit_1,High-Risk,Layering,high_depth_transaction_chaining,Intermediary forwarding node 1 in 5-hop chain
+chain_transit_2,High-Risk,Layering,high_depth_transaction_chaining,Intermediary forwarding node 2 in 5-hop chain
+chain_transit_3,High-Risk,Layering,high_depth_transaction_chaining,Intermediary forwarding node 3 in 5-hop chain
+chain_transit_4,High-Risk,Layering,high_depth_transaction_chaining,Intermediary forwarding node 4 in 5-hop chain
+chain_terminal_dest,High-Risk,Layering,high_depth_transaction_chaining,Destination sink node of 5-hop high-depth chain
+mixer_depositor_1,High-Risk,Layering,mixing_interaction,User wallet depositing directly into Tornado Cash 10 ETH pool
+tornado_cash_10eth_pool,High-Risk,Layering,mixing_interaction,Sanctioned Tornado Cash 10 ETH privacy mixing pool
+mixer_withdrawer_1,High-Risk,Layering,mixing_interaction,Recipient of unlinked withdrawal from Tornado Cash 10 ETH pool
+mixer_depositor_2,High-Risk,Layering,mixing_interaction,User wallet depositing into Tornado Cash 1 ETH pool
+tornado_cash_1eth_pool,High-Risk,Layering,mixing_interaction,Sanctioned Tornado Cash 1 ETH privacy mixing pool
+mixer_withdrawer_2,High-Risk,Layering,mixing_interaction,Recipient of unlinked withdrawal from Tornado Cash 1 ETH pool
+peel_originator,High-Risk,Layering,peeling_chain,Originator of peeling chain splitting $5k to pocket and $95k forward
+peel_pocket_alpha,High-Risk,Layering,peeling_chain,Peeling chain pocket address 1 receiving $5k
+peel_hop_beta,High-Risk,Layering,peeling_chain,Second hop in peeling chain forwarding $90k
+peel_pocket_beta,High-Risk,Layering,peeling_chain,Peeling chain pocket address 2 receiving $5k
+peel_hop_gamma,High-Risk,Layering,peeling_chain,Third hop in peeling chain forwarding $85k
+peel_pocket_gamma,High-Risk,Layering,peeling_chain,Peeling chain pocket address 3 receiving $5k
+peel_hop_delta,High-Risk,Layering,peeling_chain,Fourth hop in peeling chain
+shell_transit_entry,High-Risk,Layering,shell_wallet_network,Entry point to high-velocity shell wallet network
+shell_hop_alpha,High-Risk,Layering,shell_wallet_network,Zero-holding transit shell wallet pass-through hop 1
+shell_hop_beta,High-Risk,Layering,shell_wallet_network,Zero-holding transit shell wallet pass-through hop 2
+shell_transit_exit,High-Risk,Layering,shell_wallet_network,Exit point of shell transit network
+cex_deposit_hub_binance,High-Risk,Integration,convergence,Consolidation destination hub receiving fan-in from 6 feeders
+dormant_whale_vault,High-Risk,Integration,dormancy,Dormant wallet inactive for 220 days suddenly disbursing 4 large payouts
+offramp_terminal_sink_1,High-Risk,Integration,terminal_nodes,Receive-only terminal sink accumulating funds with zero outbound
+reagg_mixer_consolidator,High-Risk,Integration,reaggregation,Reaggregation hub assembling 8 small inflows into 1 large exit
+alice_personal_wallet,Clean,Control,none,Legitimate user peer-to-peer dinner transfer
+company_hr_payroll,Clean,Control,none,Legitimate corporate salary payroll distribution account
+dex_arbitrage_trader,Clean,Control,none,Standard decentralized exchange arbitrage trader
+crypto_enthusiast,Clean,Control,none,Verified staking deposit to Lido liquid staking
+opensea_nft_collector,Clean,Control,none,Verified NFT marketplace purchase on OpenSea

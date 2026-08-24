@@ -70,9 +70,9 @@ CREATE TABLE IF NOT EXISTS wallet_labels (
 
 CREATE TABLE IF NOT EXISTS transactions (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    tx_hash VARCHAR(66) NOT NULL,
-    from_address VARCHAR(64) NULL,
-    to_address VARCHAR(64) NULL,
+    tx_hash VARCHAR(128) NOT NULL,
+    from_address VARCHAR(255) NULL,
+    to_address VARCHAR(255) NULL,
     value_eth DECIMAL(38,18) NOT NULL DEFAULT 0,
     usd_at_execution DECIMAL(24,2) NULL,
     pricing_source VARCHAR(64) NULL COMMENT 'chainlink_oracle | backfill_chainlink | NULL if no price',
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS addresses (
-    address VARCHAR(64) PRIMARY KEY,
+    address VARCHAR(255) PRIMARY KEY,
     is_contract TINYINT(1) NOT NULL DEFAULT 0,
     first_seen DATETIME NULL,
     last_seen DATETIME NULL,

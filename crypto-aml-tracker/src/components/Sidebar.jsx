@@ -24,6 +24,16 @@ const SECTIONS = [
   },
 ];
 
+// Add development-only tools when running in dev mode (Vite provides import.meta.env.DEV)
+if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) {
+  SECTIONS.push({
+    title: 'Developer',
+    items: [
+      { id: 'dev-tools', label: 'Dev Tools', icon: '🛠' },
+    ],
+  })
+}
+
 const Sidebar = ({ activePage, onNavigate, onHome }) => (
   <div className="sidebar no-print" style={{ width: '220px', minWidth: '220px', height: '100vh', background: '#0F1829', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(201,168,76,0.14)', flexShrink: 0 }}>
     <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(201,168,76,0.14)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>

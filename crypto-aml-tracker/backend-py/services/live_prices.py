@@ -42,9 +42,23 @@ KRAKEN_PAIRS = {
     "BCH":  "BCHUSD",
 }
 
-# Cache
-_PRICE_CACHE: Dict[str, float] = {}
-_CACHE_TIME: float = 0
+DEFAULT_PRICES: Dict[str, float] = {
+    "BTC":   96500.0,
+    "ETH":   2750.0,
+    "WETH":  2750.0,
+    "BNB":   650.0,
+    "SOL":   185.0,
+    "LTC":   110.0,
+    "DOGE":  0.25,
+    "BCH":   480.0,
+    "POL":   0.55,
+    "MATIC": 0.55,
+    "ARB":   0.95,
+}
+
+# Cache initialized with robust baseline
+_PRICE_CACHE: Dict[str, float] = dict(DEFAULT_PRICES)
+_CACHE_TIME: float = time.time()
 _CACHE_TTL  = 300  # 5 minutes
 
 
@@ -55,18 +69,18 @@ def _make_ssl_ctx():
     return ctx
 
 
-def _fetch_url(url: str, timeout: int = 10) -> Optional[dict]:
+def _fetch_url(url: str, timeout: float = 2.0) -> Optional[dict]:
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        ctx = _make_ssl_ctx()
-        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
-            return json.loads(resp.read())
-    except Exception:
+        with urllib.request.urlopen(req, context=_make_ssl_ctx(), timeout=timeout) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        logger.debug("Price fetch failed from %s: %s", url, e)
         return None
 
 
 def _try_binance() -> Dict[str, float]:
-    data = _fetch_url("https://api.binance.com/api/v3/ticker/price", timeout=12)
+    data = _fetch_url("https://api.binance.com/api/v3/ticker/price", timeout=2.0)
     if not data:
         return {}
     ticker_map = {t["symbol"]: float(t["price"]) for t in data}
@@ -79,7 +93,7 @@ def _try_binance() -> Dict[str, float]:
 
 def _try_kraken() -> Dict[str, float]:
     pairs_str = ",".join(set(KRAKEN_PAIRS.values()))
-    data = _fetch_url(f"https://api.kraken.com/0/public/Ticker?pair={pairs_str}", timeout=12)
+    data = _fetch_url(f"https://api.kraken.com/0/public/Ticker?pair={pairs_str}", timeout=2.0)
     if not data or data.get("error"):
         return {}
     result = data.get("result", {})
@@ -99,7 +113,7 @@ def _try_cryptocompare() -> Dict[str, float]:
     syms = "BTC,ETH,BNB,SOL,LTC,DOGE,BCH,MATIC"
     data = _fetch_url(
         f"https://min-api.cryptocompare.com/data/pricemulti?fsyms={syms}&tsyms=USD",
-        timeout=12
+        timeout=2.0
     )
     if not data:
         return {}

@@ -128,7 +128,7 @@ const CHAIN_NATIVE_ASSET = {
     bitcoin: 'BTC', litecoin: 'LTC', dogecoin: 'DOGE', bitcoin_cash: 'BCH',
 };
 const getNativeAsset = (cluster) =>
-    CHAIN_NATIVE_ASSET[cluster?.chain_name] || cluster?.blockchain_type === 'UTXO' ? '' : 'ETH';
+    CHAIN_NATIVE_ASSET[cluster?.chain_name] || (cluster?.blockchain_type === 'UTXO' ? 'BTC' : 'ETH');
 
 const formatOwner = (owner, labelStatus) => {
     if (owner?.full_name) return owner.full_name;

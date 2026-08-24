@@ -273,6 +273,7 @@ async def get_clusters(limit: int = Query(500, ge=1, le=5000)):
         SELECT c.id,
                c.chain_name,
                COALESCE(cluster_sizes.member_count, 0) AS cluster_size,
+               cluster_sizes.sample_address,
                c.total_balance,
                c.risk_level,
                c.label_status,
@@ -293,7 +294,7 @@ async def get_clusters(limit: int = Query(500, ge=1, le=5000)):
                o.notes
         FROM wallet_clusters c
         LEFT JOIN (
-            SELECT cluster_id, COUNT(*) AS member_count
+            SELECT cluster_id, COUNT(*) AS member_count, MIN(address) AS sample_address
             FROM addresses
             WHERE cluster_id IS NOT NULL
             GROUP BY cluster_id
@@ -307,7 +308,7 @@ async def get_clusters(limit: int = Query(500, ge=1, le=5000)):
         (MIN_CLUSTER_SIZE, limit),
     )
     elapsed = time.time() - start_time
-    print(f"⚡ get_clusters query completed in {elapsed:.3f}s (returned {len(rows)} clusters)")
+    print(f"[get_clusters] Query completed in {elapsed:.3f}s (returned {len(rows)} clusters)")
     if not rows:
         return []
 
@@ -321,6 +322,8 @@ async def get_clusters(limit: int = Query(500, ge=1, le=5000)):
             "risk_level": row.get("risk_level") or "normal",
             "label_status": row.get("label_status") or "unlabeled",
             "matched_owner_address": row.get("matched_owner_address"),
+            "sample_address": row.get("sample_address"),
+            "primary_address": row.get("matched_owner_address") or row.get("sample_address"),
             "owner": _owner_payload(row),
             # details (addresses/activity/evidence) intentionally omitted
         }
@@ -446,20 +449,50 @@ async def get_clusters_summary():
     }
 
 
+def _run_all_chain_clustering_sync(cfg) -> int:
+    import logging
+    cl_logger = logging.getLogger(__name__)
+    from aml_pipeline.clustering.engine import ClusteringEngine
+    from aml_pipeline.clustering.utxo_engine import UTXOClusteringEngine
+    from aml_pipeline.clustering.solana_engine import SolanaClusteringEngine
+
+    evm_chains = ["ethereum", "bnb", "polygon", "arbitrum", "base"]
+    utxo_chains = ["bitcoin", "litecoin", "dogecoin", "bitcoin_cash"]
+    total = 0
+
+    for chain in evm_chains:
+        try:
+            eng = ClusteringEngine(cfg=cfg, chain_name=chain)
+            res = eng.run(persist=True, min_cluster_size=cfg.clustering_min_cluster_size)
+            total += len(res)
+        except Exception as e:
+            cl_logger.warning("Clustering failed for %s: %s", chain, e)
+
+    for chain in utxo_chains:
+        try:
+            eng = UTXOClusteringEngine(cfg=cfg, chain_name=chain)
+            res = eng.run(persist=True, min_cluster_size=1)
+            total += len(res)
+        except Exception as e:
+            cl_logger.warning("UTXO Clustering failed for %s: %s", chain, e)
+
+    try:
+        sol_eng = SolanaClusteringEngine(cfg=cfg)
+        res = sol_eng.run(persist=True, min_cluster_size=2)
+        total += len(res)
+    except Exception as e:
+        cl_logger.warning("Solana Clustering failed: %s", e)
+
+    return total
+
+
 @router.post("/run")
 async def run_clustering():
-    """Manually trigger clustering (hybrid with scheduled runs)."""
+    """Manually trigger clustering across all supported chains."""
     try:
         cfg = _load_aml_config()
-        from aml_pipeline.clustering.engine import ClusteringEngine
-
-        engine = ClusteringEngine(cfg=cfg)
-        results = await asyncio.to_thread(
-            engine.run,
-            persist=True,
-            min_cluster_size=cfg.clustering_min_cluster_size,
-        )
-        return {"status": "ok", "clusters_found": len(results)}
+        clusters_found = await asyncio.to_thread(_run_all_chain_clustering_sync, cfg)
+        return {"status": "ok", "clusters_found": clusters_found}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Clustering failed: {exc}") from exc
 

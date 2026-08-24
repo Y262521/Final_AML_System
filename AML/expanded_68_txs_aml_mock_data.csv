@@ -1,0 +1,69 @@
+tx_hash,sender,receiver,amount_usd,timestamp,chain,case_tag,target_algorithm
+TX_P_STR1_1,p_str_sender1_1,target_struct_1,9900,2026-08-17 12:00:00,ETH,Placement: Structuring 1,structuring
+TX_P_STR1_2,p_str_sender1_2,target_struct_1,9910,2026-08-17 12:05:00,ETH,Placement: Structuring 1,structuring
+TX_P_STR1_3,p_str_sender1_3,target_struct_1,9900,2026-08-17 12:10:00,ETH,Placement: Structuring 1,structuring
+TX_P_STR2_1,p_str_sender2_1,target_struct_2,9800,2026-08-17 12:15:00,ETH,Placement: Structuring 2,structuring
+TX_P_STR2_2,p_str_sender2_2,target_struct_2,9805,2026-08-17 12:20:00,ETH,Placement: Structuring 2,structuring
+TX_P_STR2_3,p_str_sender2_3,target_struct_2,9800,2026-08-17 12:25:00,ETH,Placement: Structuring 2,structuring
+TX_P_SMURF_1,p_smurf_mule_1,target_smurf_1,3500,2026-08-17 12:00:00,ETH,Placement: Smurfing,smurfing
+TX_P_SMURF_2,p_smurf_mule_2,target_smurf_1,3650,2026-08-17 12:03:00,ETH,Placement: Smurfing,smurfing
+TX_P_SMURF_3,p_smurf_mule_3,target_smurf_1,3800,2026-08-17 12:06:00,ETH,Placement: Smurfing,smurfing
+TX_P_SMURF_4,p_smurf_mule_4,target_smurf_1,3950,2026-08-17 12:09:00,ETH,Placement: Smurfing,smurfing
+TX_P_SMURF_5,p_smurf_mule_5,target_smurf_1,4100,2026-08-17 12:12:00,ETH,Placement: Smurfing,smurfing
+TX_P_SMURF_6,p_smurf_mule_6,target_smurf_1,4250,2026-08-17 12:15:00,ETH,Placement: Smurfing,smurfing
+TX_P_MICRO1_1,p_micro_src1_1,target_micro_1,400,2026-08-17 12:00:00,ETH,Placement: Micro-funding 1,micro_funding
+TX_P_MICRO1_2,p_micro_src1_2,target_micro_1,450,2026-08-17 12:10:00,ETH,Placement: Micro-funding 1,micro_funding
+TX_P_MICRO1_3,p_micro_src1_3,target_micro_1,500,2026-08-17 12:20:00,ETH,Placement: Micro-funding 1,micro_funding
+TX_P_MICRO2_1,p_micro_src2_1,target_micro_2,300,2026-08-17 12:30:00,ETH,Placement: Micro-funding 2,micro_funding
+TX_P_MICRO2_2,p_micro_src2_2,target_micro_2,330,2026-08-17 12:40:00,ETH,Placement: Micro-funding 2,micro_funding
+TX_P_MICRO2_3,p_micro_src2_3,target_micro_2,360,2026-08-17 12:50:00,ETH,Placement: Micro-funding 2,micro_funding
+TX_L_BRG_1,l_brg_user1,arbitrum_bridge_contract,45000,2026-08-17 13:00:00,ETH,Layering: Bridge,bridge_hopping
+TX_L_BRG_2,arbitrum_bridge_contract,l_brg_recv1,44800,2026-08-17 13:05:00,ARBITRUM,Layering: Bridge,bridge_hopping
+TX_L_BRG_3,l_brg_user2,polygon_bridge_contract,60000,2026-08-17 13:10:00,ETH,Layering: Bridge,bridge_hopping
+TX_L_BRG_4,polygon_bridge_contract,l_brg_recv2,59700,2026-08-17 13:15:00,POLYGON,Layering: Bridge,bridge_hopping
+TX_L_DEPTH_1,depth_src,depth_hop1,25000,2026-08-17 14:00:00,ETH,Layering: High Depth,high_depth_transaction_chaining
+TX_L_DEPTH_2,depth_hop1,depth_hop2,24800,2026-08-17 14:10:00,ETH,Layering: High Depth,high_depth_transaction_chaining
+TX_L_DEPTH_3,depth_hop2,depth_hop3,24600,2026-08-17 14:20:00,ETH,Layering: High Depth,high_depth_transaction_chaining
+TX_L_DEPTH_4,depth_hop3,depth_dst,24400,2026-08-17 14:30:00,ETH,Layering: High Depth,high_depth_transaction_chaining
+TX_L_MIX_1,l_mix_user1,tornado_cash_pool,15000,2026-08-17 15:00:00,ETH,Layering: Mixing,mixing_interaction
+TX_L_MIX_2,tornado_cash_pool,l_mix_recv1,14900,2026-08-17 15:10:00,ETH,Layering: Mixing,mixing_interaction
+TX_L_MIX_3,l_mix_user2,railgun_privacy_mixer,30000,2026-08-17 15:20:00,ETH,Layering: Mixing,mixing_interaction
+TX_L_MIX_4,railgun_privacy_mixer,l_mix_recv2,29850,2026-08-17 15:30:00,ETH,Layering: Mixing,mixing_interaction
+TX_L_PEEL_1,peel_main_1,peel_main_2,80000,2026-08-17 16:00:00,ETH,Layering: Peeling,peeling_chain
+TX_L_PEEL_2,peel_main_1,peel_pocket_1,5000,2026-08-17 16:01:00,ETH,Layering: Peeling,peeling_chain
+TX_L_PEEL_3,peel_main_2,peel_main_3,75000,2026-08-17 16:15:00,ETH,Layering: Peeling,peeling_chain
+TX_L_PEEL_4,peel_main_2,peel_pocket_2,5000,2026-08-17 16:16:00,ETH,Layering: Peeling,peeling_chain
+TX_L_SHELL_1,shell_head,shell_mule_1,18000,2026-08-17 17:00:00,ETH,Layering: Shell Net,shell_wallet_network
+TX_L_SHELL_2,shell_mule_1,shell_mule_2,18000,2026-08-17 17:02:00,ETH,Layering: Shell Net,shell_wallet_network
+TX_L_SHELL_3,shell_mule_2,shell_mule_3,18000,2026-08-17 17:04:00,ETH,Layering: Shell Net,shell_wallet_network
+TX_L_SHELL_4,shell_mule_3,shell_tail,18000,2026-08-17 17:06:00,ETH,Layering: Shell Net,shell_wallet_network
+TX_I_CONV_1,conv_feeder_1,conv_cex_deposit_wallet,22000,2026-08-17 18:00:00,ETH,Integration: Convergence,convergence
+TX_I_CONV_2,conv_feeder_2,conv_cex_deposit_wallet,23000,2026-08-17 18:05:00,ETH,Integration: Convergence,convergence
+TX_I_CONV_3,conv_feeder_3,conv_cex_deposit_wallet,24000,2026-08-17 18:10:00,ETH,Integration: Convergence,convergence
+TX_I_CONV_4,conv_feeder_4,conv_cex_deposit_wallet,25000,2026-08-17 18:15:00,ETH,Integration: Convergence,convergence
+TX_I_CONV_5,conv_feeder_5,conv_cex_deposit_wallet,26000,2026-08-17 18:20:00,ETH,Integration: Convergence,convergence
+TX_I_DORM_INIT,dorm_ancient_funder,dormant_whale_wallet,150000,2025-12-10 12:00:00,ETH,Integration: Dormancy,dormancy
+TX_I_DORM_OUT_1,dormant_whale_wallet,dorm_offramp_1,36000,2026-08-17 19:00:00,ETH,Integration: Dormancy,dormancy
+TX_I_DORM_OUT_2,dormant_whale_wallet,dorm_offramp_2,36000,2026-08-17 19:05:00,ETH,Integration: Dormancy,dormancy
+TX_I_DORM_OUT_3,dormant_whale_wallet,dorm_offramp_3,36000,2026-08-17 19:10:00,ETH,Integration: Dormancy,dormancy
+TX_I_DORM_OUT_4,dormant_whale_wallet,dorm_offramp_4,36000,2026-08-17 19:15:00,ETH,Integration: Dormancy,dormancy
+TX_I_TERM1_1,term_src1_1,terminal_sink_alpha,12000,2026-08-17 20:00:00,ETH,Integration: Terminal Nodes,terminal_nodes
+TX_I_TERM1_2,term_src1_2,terminal_sink_alpha,12500,2026-08-17 20:10:00,ETH,Integration: Terminal Nodes,terminal_nodes
+TX_I_TERM1_3,term_src1_3,terminal_sink_alpha,13000,2026-08-17 20:20:00,ETH,Integration: Terminal Nodes,terminal_nodes
+TX_I_TERM2_1,term_src2_1,terminal_sink_beta,18000,2026-08-17 20:30:00,ETH,Integration: Terminal Nodes,terminal_nodes
+TX_I_TERM2_2,term_src2_2,terminal_sink_beta,18500,2026-08-17 20:40:00,ETH,Integration: Terminal Nodes,terminal_nodes
+TX_I_REAGG_IN_1,reagg_feeder_1,reagg_consolidation_hub,2500,2026-08-17 21:00:00,ETH,Integration: Reaggregation,reaggregation
+TX_I_REAGG_IN_2,reagg_feeder_2,reagg_consolidation_hub,2500,2026-08-17 21:03:00,ETH,Integration: Reaggregation,reaggregation
+TX_I_REAGG_IN_3,reagg_feeder_3,reagg_consolidation_hub,2500,2026-08-17 21:06:00,ETH,Integration: Reaggregation,reaggregation
+TX_I_REAGG_IN_4,reagg_feeder_4,reagg_consolidation_hub,2500,2026-08-17 21:09:00,ETH,Integration: Reaggregation,reaggregation
+TX_I_REAGG_OUT_1,reagg_consolidation_hub,reagg_final_offramp,9800,2026-08-17 21:20:00,ETH,Integration: Reaggregation,reaggregation
+TX_C_1,alice_wallet,bob_wallet,150,2026-08-17 22:00:00,ETH,Clean Control,none
+TX_C_2,tech_corp_payroll,employee_dev_1,5200,2026-08-17 22:05:00,ETH,Clean Control,none
+TX_C_3,tech_corp_payroll,employee_dev_2,5400,2026-08-17 22:10:00,ETH,Clean Control,none
+TX_C_4,retail_trader_joe,uniswap_v3_router,1200,2026-08-17 22:15:00,ETH,Clean Control,none
+TX_C_5,nft_collector,opensea_marketplace,850,2026-08-17 22:20:00,ETH,Clean Control,none
+TX_C_6,dapp_user,aave_lending_pool,3000,2026-08-17 22:25:00,ETH,Clean Control,none
+TX_C_7,charlie_wallet,dave_wallet,450,2026-08-17 22:30:00,ETH,Clean Control,none
+TX_C_8,ecommerce_buyer,merchant_gateway,120,2026-08-17 22:35:00,ETH,Clean Control,none
+TX_C_9,staker_alpha,lido_steth_contract,10000,2026-08-17 22:40:00,ETH,Clean Control,none
+TX_C_10,validator_node,staking_rewards_vault,32,2026-08-17 22:45:00,ETH,Clean Control,none

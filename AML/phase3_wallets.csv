@@ -1,0 +1,6 @@
+wallet,phase,detector,expected_min_confidence,notes
+0x636f6e76657267655f7461726765740000000000,integration,convergence,0.55,"8 distinct senders x 4.0 ETH into one address (32 ETH total) inside a few minutes. Expect a convergence signal, confidence ~0.58."
+0x646f726d616e745f77616c6c6574000000000000,integration,dormancy,0.45,"Wallet funded once, then silent for 45 days (> 30-day floor), then sends 5.0 ETH (> 1.0 ETH floor). Expect a dormancy signal, confidence ~0.50."
+0x7465726d696e616c5f756e6b6e6f776e00000000,integration,terminal_node (unknown),0.4,"Address only ever receives (8 ETH total), never sends, no known-exchange prefix match. Expect terminal_node signal, confidence ~0.47, is_known_exchange=False."
+0xd551234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,integration,terminal_node (known exchange),0.65,"Same receive-only pattern (8 ETH total) but address prefix matches a hardcoded _KNOWN_EXIT_PREFIXES entry. Expect terminal_node signal, confidence ~0.71, is_known_exchange=True."
+0x72656167675f77616c6c65740000000000000000,integration,reaggregation,0.35,"6 inputs x 1.0 ETH (6 ETH total) reassembled into a single 5.0 ETH output (ratio 0.83, well above the 0.70 floor). Expect a reaggregation signal, confidence ~0.41."

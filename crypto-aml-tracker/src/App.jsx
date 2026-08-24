@@ -12,6 +12,7 @@ import Clusters from './pages/Clusters'
 import Analytics from './pages/Analytics'
 import RiskIntelligence from './pages/RiskIntelligence'
 import ETLControlCenter from './pages/ETLControlCenter'
+import DevTools from './pages/DevTools'
 import TestingDashboard from './pages/Testing/TestingDashboard'
 import EntityIntelligenceWorkspace from './components/intelligence/EntityIntelligenceWorkspace'
 import AnalysisMenu from './components/intelligence/AnalysisMenu'
@@ -196,11 +197,13 @@ function App() {
                             ? <Analytics />
                             : activePage === 'risk'
                               ? <RiskIntelligence />
-                              : activePage === 'etl-control'
-                                ? <ETLControlCenter />
-                                : activePage === 'testing'
-                                  ? <TestingDashboard />
-                                  : null
+                              : activePage === 'dev-tools'
+                                ? <DevTools />
+                                : activePage === 'etl-control'
+                                  ? <ETLControlCenter />
+                                  : activePage === 'testing'
+                                    ? <TestingDashboard />
+                                    : null
             }
           </main>
 

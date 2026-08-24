@@ -1,0 +1,27 @@
+tx_hash,sender,receiver,amount_usd,timestamp,chain,scenario
+TX_BAD_01,0x098B716B8Aaf21512996dC57EB0615e2383E2f96,mule_lazarus_hop1,125000.0,2026-08-17 12:00:00,ETH,Direct Sanctions Transfer (Lazarus)
+TX_BAD_02,mule_lazarus_hop1,0xd90e2f925DA726b50C4Ed8D0Fb90Ad053324F31b,9900.0,2026-08-17 12:15:00,ETH,Sanctioned Entity -> Tornado Cash Mixer
+TX_BAD_03,0x1da5821544e25c636c1417ba96ade4cf6d2f9b5a,suex_cashout_mule,45000.0,2026-08-17 12:30:00,ETH,Direct Sanctions Transfer (SUEX)
+TX_STRUCT_1,struct_sender_1,target_struct_hub,9850.0,2026-08-17 12:00:00,ETH,Structuring (<$10k Limit)
+TX_STRUCT_2,struct_sender_2,target_struct_hub,9850.0,2026-08-17 12:10:00,ETH,Structuring (<$10k Limit)
+TX_STRUCT_3,struct_sender_3,target_struct_hub,9850.0,2026-08-17 12:20:00,ETH,Structuring (<$10k Limit)
+TX_STRUCT_4,struct_sender_4,target_struct_hub,9850.0,2026-08-17 12:30:00,ETH,Structuring (<$10k Limit)
+TX_SMURF_1,smurf_mule_1,target_smurf_collector,3500.0,2026-08-17 12:00:00,ETH,Smurfing Fan-In
+TX_SMURF_2,smurf_mule_2,target_smurf_collector,3500.0,2026-08-17 12:05:00,ETH,Smurfing Fan-In
+TX_SMURF_3,smurf_mule_3,target_smurf_collector,3500.0,2026-08-17 12:10:00,ETH,Smurfing Fan-In
+TX_SMURF_4,smurf_mule_4,target_smurf_collector,3500.0,2026-08-17 12:15:00,ETH,Smurfing Fan-In
+TX_SMURF_5,smurf_mule_5,target_smurf_collector,3500.0,2026-08-17 12:20:00,ETH,Smurfing Fan-In
+TX_SMURF_6,smurf_mule_6,target_smurf_collector,3500.0,2026-08-17 12:25:00,ETH,Smurfing Fan-In
+TX_PEEL_01,peel_source,peel_hop1,50000.0,2026-08-17 12:00:00,ETH,Peeling Chain Hop 1
+TX_PEEL_02,peel_hop1,peel_pocket_1,2000.0,2026-08-17 12:10:00,ETH,Peel Pocket 1
+TX_PEEL_03,peel_hop1,peel_hop2,48000.0,2026-08-17 12:12:00,ETH,Peeling Chain Hop 2
+TX_PEEL_04,peel_hop2,peel_pocket_2,2000.0,2026-08-17 12:20:00,ETH,Peel Pocket 2
+TX_CHAIN_01,chain_src,chain_hop1,80000.0,2026-08-17 12:00:00,ETH,High Depth Hop 1
+TX_CHAIN_02,chain_hop1,chain_hop2,79900.0,2026-08-17 12:05:00,ETH,High Depth Hop 2
+TX_CHAIN_03,chain_hop2,chain_hop3,79800.0,2026-08-17 12:10:00,ETH,High Depth Hop 3
+TX_CHAIN_04,chain_hop3,chain_sink,79700.0,2026-08-17 12:15:00,ETH,High Depth Hop 4
+TX_CONV_1,conv_feeder_1,target_convergence_sink,15000.0,2026-08-17 12:00:00,ETH,Integration Convergence
+TX_CONV_2,conv_feeder_2,target_convergence_sink,15000.0,2026-08-17 12:08:00,ETH,Integration Convergence
+TX_CONV_3,conv_feeder_3,target_convergence_sink,15000.0,2026-08-17 12:16:00,ETH,Integration Convergence
+TX_CONV_4,conv_feeder_4,target_convergence_sink,15000.0,2026-08-17 12:24:00,ETH,Integration Convergence
+TX_CONV_5,conv_feeder_5,target_convergence_sink,15000.0,2026-08-17 12:32:00,ETH,Integration Convergence

@@ -12,6 +12,7 @@ export const PAGE_ROUTES = Object.freeze({
   'etl-control': '/etl-control',
   testing: '/testing',
   'coming-soon': '/coming-soon',
+  'dev-tools': '/dev-tools',
 })
 
 export const DEFAULT_PAGE = 'feed'

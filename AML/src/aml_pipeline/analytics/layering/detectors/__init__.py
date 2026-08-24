@@ -8,6 +8,7 @@ from .mixing import MixingInteractionDetector
 from .pass_through import PassThroughDetector
 from .peeling import PeelingChainDetector
 from .shell_wallets import ShellWalletNetworkDetector
+from .loop_detection import LoopDetectionDetector
 
 __all__ = [
     "BridgeHoppingDetector",
@@ -18,4 +19,5 @@ __all__ = [
     "PassThroughDetector",
     "PeelingChainDetector",
     "ShellWalletNetworkDetector",
+    "LoopDetectionDetector",
 ]

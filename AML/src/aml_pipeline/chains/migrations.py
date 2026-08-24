@@ -179,6 +179,21 @@ def run_mariadb_chain_migrations(engine: Engine, db_name: str) -> dict:
         if added > 0:
             summary["tables_migrated"] += 1
 
+    # Widen key columns to accommodate multi-chain formats (Solana 88-char signatures, BCH CashAddr, long scripts)
+    _widen_statements = [
+        "ALTER TABLE `transactions` MODIFY COLUMN `tx_hash` VARCHAR(128) NOT NULL",
+        "ALTER TABLE `transactions` MODIFY COLUMN `from_address` VARCHAR(255) NULL",
+        "ALTER TABLE `transactions` MODIFY COLUMN `to_address` VARCHAR(255) NULL",
+        "ALTER TABLE `addresses` MODIFY COLUMN `address` VARCHAR(255) NOT NULL",
+        "ALTER TABLE `owner_list_addresses` MODIFY COLUMN `address` VARCHAR(255) NOT NULL",
+    ]
+    with engine.begin() as conn:
+        for ddl in _widen_statements:
+            try:
+                conn.exec_driver_sql(ddl)
+            except Exception as exc:
+                logger.debug("Column widen note (%s): %s", ddl[:40], exc)
+
     logger.info(
         "Chain migrations complete: %d columns added across %d tables (%d skipped)",
         summary["columns_added"],
