@@ -267,7 +267,7 @@ async def _fetch_hist_prices_chainlink(days: int = 730, feed_contract: str | Non
 
             await asyncio.sleep(0.15)  # slightly longer pause for multi-symbol fetches
 
-    print(f"  ✓ Chainlink {contract[:10]}…: {len(out)}/{days} days resolved")
+    print(f"  [OK] Chainlink {contract[:10]}...: {len(out)}/{days} days resolved")
     return out
 
 
@@ -335,12 +335,12 @@ async def warm_hist_price_cache():
     Loads prices from DB cache. Only fetches from Chainlink if ETH/WETH are missing.
     Non-ETH chains (BNB, SOL, etc.) are loaded from DB only — no blocking fetch at startup.
     """
-    print("🌡  Warming historical price cache (Chainlink/Alchemy oracle — all chains)…")
+    print("[*] Warming historical price cache (Chainlink/Alchemy oracle - all chains)...")
     for sym in _PRICE_SYMBOLS:
         db_prices = await _load_hist_prices_from_db(sym)
         if db_prices:
             _HIST_PRICE_CACHE.setdefault(sym, {}).update(db_prices)
-            print(f"  ✓ {sym}: {len(db_prices)} days loaded from DB (Chainlink oracle data)")
+            print(f"  [OK] {sym}: {len(db_prices)} days loaded from DB (Chainlink oracle data)")
         else:
             # Only block startup for ETH/WETH — they're needed for the Ethereum price
             # Other assets skip the slow fetch; they'll use the backfill path instead
@@ -348,28 +348,28 @@ async def warm_hist_price_cache():
                 feed = _CHAINLINK_FEEDS.get(sym)
                 if not feed:
                     continue
-                print(f"  ↓ {sym}: no DB data, querying Chainlink oracle via Alchemy…")
+                print(f"  [>] {sym}: no DB data, querying Chainlink oracle via Alchemy...")
                 try:
                     fresh = await _fetch_hist_prices_chainlink(days=730, feed_contract=feed)
                     if fresh:
                         _HIST_PRICE_CACHE.setdefault(sym, {}).update(fresh)
                         await _save_hist_prices_to_db(sym, fresh)
-                        print(f"  ✓ {sym}: {len(fresh)} days fetched from Chainlink and persisted")
+                        print(f"  [OK] {sym}: {len(fresh)} days fetched from Chainlink and persisted")
                     else:
                         print(
-                            f"  ✗ {sym}: Chainlink oracle fetch failed. "
+                            f"  [!] {sym}: Chainlink oracle fetch failed. "
                             "Ensure ALCHEMY_RPC is set in .env. "
                             "usd_at_execution will be NULL until prices are loaded."
                         )
                 except Exception as exc:
-                    print(f"  ✗ {sym}: Chainlink oracle fetch failed. Ensure ALCHEMY_RPC is set in .env. usd_at_execution will be NULL until prices are loaded.")
+                    print(f"  [!] {sym}: Chainlink oracle fetch failed. Ensure ALCHEMY_RPC is set in .env. usd_at_execution will be NULL until prices are loaded.")
             else:
                 print(f"  -- {sym}: no DB data (will fetch on next scheduled backfill)")
         _HIST_CACHE_WARMED.add(sym)
 
     total = sum(len(v) for v in _HIST_PRICE_CACHE.values())
     symbols_loaded = [s for s in _PRICE_SYMBOLS if _HIST_PRICE_CACHE.get(s)]
-    print(f"✓ Historical price cache warm ({total} total entries across {len(symbols_loaded)} symbols: {', '.join(symbols_loaded)})")
+    print(f"[OK] Historical price cache warm ({total} total entries across {len(symbols_loaded)} symbols: {', '.join(symbols_loaded)})")
 
 
 async def backfill_usd_at_execution_all_chains() -> dict:

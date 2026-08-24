@@ -3,9 +3,19 @@ Unit tests for MVA helpers and balance RPC URL selection (no MySQL required).
 """
 
 import os
+import sys
 import asyncio
 import unittest
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+backend_dir = Path(__file__).resolve().parents[1]
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
+
+backend_venv_pkg = backend_dir / "venv" / "Lib" / "site-packages"
+if backend_venv_pkg.exists() and str(backend_venv_pkg) not in sys.path:
+    sys.path.insert(0, str(backend_venv_pkg))
 
 
 class TestMvaFlags(unittest.TestCase):

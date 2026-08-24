@@ -28,6 +28,9 @@ import time
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import requests
+from requests.adapters import HTTPAdapter
 from pymongo import ReplaceOne
 from web3 import Web3
 
@@ -78,8 +81,16 @@ class EVMExtractor(BaseExtractor):
         # Resolve RPC URL: explicit override → env var → registry template
         self._rpc_url = self._resolve_rpc_url(rpc_url)
 
-        # Web3 connection
-        self.w3 = Web3(Web3.HTTPProvider(self._rpc_url))
+        # Web3 connection with high-throughput HTTP connection pooling
+        self.session = requests.Session()
+        adapter = HTTPAdapter(
+            pool_connections=50,
+            pool_maxsize=50,
+            max_retries=3,
+        )
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+        self.w3 = Web3(Web3.HTTPProvider(self._rpc_url, session=self.session, request_kwargs={"timeout": 60}))
 
         # Inject POA middleware for chains that use it (BNB, Polygon, Arbitrum)
         _POA_CHAINS = {"bnb", "polygon", "arbitrum", "base"}
@@ -256,20 +267,58 @@ class EVMExtractor(BaseExtractor):
         Returns a raw document dict tagged with chain identity fields.
         Structure mirrors the existing ETH raw document format so the
         transformer pipeline works unchanged.
+        Uses concurrent thread pool to resolve transaction receipts in parallel.
         """
         block = rpc_call_with_retry(
             lambda: self.w3.eth.get_block(block_number, full_transactions=True)
         )
 
+        tx_list = block.get("transactions", []) or []
         receipts = []
         logs = []
-        for tx in block["transactions"]:
-            tx_hash = tx["hash"]
-            receipt = rpc_call_with_retry(
-                lambda: self.w3.eth.get_transaction_receipt(tx_hash)
-            )
-            receipts.append(receipt)
-            logs.extend(receipt.get("logs", []))
+
+        # Try fast batch receipt fetch if using Alchemy endpoint (1 single HTTP call for entire block)
+        if hasattr(self, "_rpc_url") and self._rpc_url and "alchemy.com" in self._rpc_url:
+            try:
+                hex_b = hex(block_number)
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "alchemy_getTransactionReceipts",
+                    "params": [{"blockNumber": hex_b}],
+                }
+                resp = self.session.post(self._rpc_url, json=payload, timeout=30)
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    alchemy_receipts = res_json.get("result", {}).get("receipts")
+                    if alchemy_receipts and isinstance(alchemy_receipts, list):
+                        receipts = alchemy_receipts
+                        for r in alchemy_receipts:
+                            logs.extend(r.get("logs", []))
+            except Exception as exc:
+                logger.debug("[%s] alchemy_getTransactionReceipts fallback note: %s", self.chain_name, exc)
+
+        if tx_list and not receipts:
+            def _fetch_single_receipt(tx):
+                tx_hash = tx.get("hash")
+                if not tx_hash:
+                    return None
+                try:
+                    return rpc_call_with_retry(
+                        lambda: self.w3.eth.get_transaction_receipt(tx_hash)
+                    )
+                except Exception as exc:
+                    logger.warning("[%s] Failed to get receipt for %s: %s", self.chain_name, tx_hash, exc)
+                    return None
+
+            max_workers = min(10, max(2, len(tx_list)))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                receipt_results = list(executor.map(_fetch_single_receipt, tx_list))
+
+            for r in receipt_results:
+                if r:
+                    receipts.append(r)
+                    logs.extend(r.get("logs", []))
 
         raw_document = {
             "block_number": block_number,
@@ -281,11 +330,11 @@ class EVMExtractor(BaseExtractor):
             "native_asset": self.native_asset,
             "network": self.chain_name,          # kept for backward-compat
             # Block data
-            "transaction_count": len(block["transactions"]),
+            "transaction_count": len(tx_list),
             "receipt_count": len(receipts),
             "log_count": len(logs),
             "block": block,
-            "transactions": block["transactions"],
+            "transactions": tx_list,
             "receipts": receipts,
             "logs": logs,
         }
@@ -385,11 +434,31 @@ class EVMExtractor(BaseExtractor):
         from_block = start_block
         to_block = min(from_block + batch_size - 1, latest_available)
 
-        logger.info("[%s] Fetching blocks %d → %d", self.chain_name, from_block, to_block)
+        logger.info("[%s] Fetching blocks %d -> %d", self.chain_name, from_block, to_block)
 
         total_transactions = 0
-        for block_number in range(from_block, to_block + 1):
-            raw_data = self.fetch_block(block_number)
+        blocks_to_fetch = list(range(from_block, to_block + 1))
+        fetched_docs = []
+
+        if len(blocks_to_fetch) > 1:
+            with ThreadPoolExecutor(max_workers=min(batch_size, 5)) as block_exec:
+                future_to_b = {
+                    block_exec.submit(self.fetch_block, b): b
+                    for b in blocks_to_fetch
+                }
+                for fut in as_completed(future_to_b):
+                    b_num = future_to_b[fut]
+                    try:
+                        raw_data = fut.result()
+                        fetched_docs.append((b_num, raw_data))
+                    except Exception as exc:
+                        logger.error("[%s] Block %d fetch failed: %s", self.chain_name, b_num, exc)
+            fetched_docs.sort(key=lambda x: x[0])
+        else:
+            raw_data = self.fetch_block(from_block)
+            fetched_docs.append((from_block, raw_data))
+
+        for block_number, raw_data in fetched_docs:
             self.save_to_local_backup(raw_data, block_number)
             flattened_count = self.save_to_db(raw_data)
             total_transactions += flattened_count
@@ -398,14 +467,13 @@ class EVMExtractor(BaseExtractor):
                 self.chain_name, block_number, flattened_count,
             )
 
-        fetched_blocks = to_block - from_block + 1
+        fetched_blocks = len(fetched_docs)
         msg = (
-            f"[{self.chain_name}] Saved blocks {from_block} → {to_block} "
+            f"[{self.chain_name}] Saved blocks {from_block} -> {to_block} "
             f"({fetched_blocks} blocks, {total_transactions} txs)"
         )
         print(msg)
         logger.info(msg)
-        time.sleep(0.2)
 
         return from_block, to_block
 

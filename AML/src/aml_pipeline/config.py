@@ -124,6 +124,12 @@ class Config:
     layering_depth_min_value_retention: float
     layering_depth_max_latency_seconds: int
     layering_depth_min_score: float
+    layering_pass_through_max_time_gap_seconds: int
+    layering_pass_through_min_retention: float
+    layering_fan_out_min_recipients: int
+    layering_fan_out_window_seconds: int
+    layering_fan_in_min_sources: int
+    layering_fan_in_window_seconds: int
 
     # Integration analytics
     integration_convergence_min_senders: int
@@ -170,13 +176,13 @@ def load_config() -> Config:
 
         mysql_host=_get_env("MYSQL_HOST", default="localhost"),
         mysql_port=_get_int("MYSQL_PORT", default=3306),
-        mysql_user=_get_env("MYSQL_USER", default="hakim"),
-        mysql_password=_get_env("MYSQL_PASSWORD", default="hakim22"),
+        mysql_user=_get_env("MYSQL_USER", default="sofi"),
+        mysql_password=_get_env("MYSQL_PASSWORD", default="sof@123"),
         mysql_db=_get_env("MYSQL_DB", default="aml_db"),
 
         neo4j_uri=_get_env("NEO4J_URI", default="bolt://localhost:7687"),
         neo4j_user=_get_env("NEO4J_USER", default="neo4j"),
-        neo4j_password=_get_env("NEO4J_PASSWORD", default="hakimaj22"),
+        neo4j_password=_get_env("NEO4J_PASSWORD", default="sofi@123"),
         neo4j_database=_get_env("NEO4J_DATABASE", default="neo4j"),
         neo4j_batch_size=_get_int("NEO4J_BATCH_SIZE", default=500),
 
@@ -373,6 +379,30 @@ def load_config() -> Config:
         layering_depth_min_score=_get_float(
             "LAYERING_DEPTH_MIN_SCORE",
             default=0.58,
+        ),
+        layering_pass_through_max_time_gap_seconds=_get_int(
+            "LAYERING_PASS_THROUGH_MAX_TIME_GAP_SECONDS",
+            default=7200,
+        ),
+        layering_pass_through_min_retention=_get_float(
+            "LAYERING_PASS_THROUGH_MIN_RETENTION",
+            default=0.85,
+        ),
+        layering_fan_out_min_recipients=_get_int(
+            "LAYERING_FAN_OUT_MIN_RECIPIENTS",
+            default=3,
+        ),
+        layering_fan_out_window_seconds=_get_int(
+            "LAYERING_FAN_OUT_WINDOW_SECONDS",
+            default=86400,
+        ),
+        layering_fan_in_min_sources=_get_int(
+            "LAYERING_FAN_IN_MIN_SOURCES",
+            default=3,
+        ),
+        layering_fan_in_window_seconds=_get_int(
+            "LAYERING_FAN_IN_WINDOW_SECONDS",
+            default=86400,
         ),
         integration_convergence_min_senders=_get_int(
             "INTEGRATION_CONVERGENCE_MIN_SENDERS",

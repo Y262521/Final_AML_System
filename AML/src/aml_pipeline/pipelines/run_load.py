@@ -59,20 +59,20 @@ def _verify(cfg):
     except Exception as e:
         neo4j_tx = neo4j_addr = f"ERROR: {e}"
 
-    print("\n── Database Verification ────────────────────────────────")
+    print("\n== Database Verification ================================")
     print(f"  MongoDB  raw_blocks          : {mongo_raw:>8}")
     print(f"  MongoDB  raw_transactions    : {mongo_flat:>8}")
     print(f"  MySQL    transactions        : {mysql_tx:>8}")
     print(f"  MySQL    addresses           : {mysql_addr:>8}")
     print(f"  Neo4j    TRANSFER rels       : {str(neo4j_tx):>8}")
     print(f"  Neo4j    Address nodes       : {str(neo4j_addr):>8}")
-    print("─────────────────────────────────────────────────────────\n")
+    print("=========================================================\n")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Load processed data into MySQL and Neo4j")
     parser.add_argument("--sync-neo4j", action="store_true",
-                        help="After MySQL load, sync MySQL → Neo4j")
+                        help="After MySQL load, sync MySQL -> Neo4j")
     parser.add_argument("--neo4j-only", action="store_true",
                         help="Skip MySQL load, only sync Neo4j from existing MySQL data")
     parser.add_argument("--full-neo4j", action="store_true",
@@ -91,37 +91,37 @@ def main():
         _verify(cfg)
         return
 
-    # ── Step 1: MySQL load ────────────────────────────────────────────────────
+    # Step 1: MySQL load
     if not args.neo4j_only:
         logger.info("Loading processed CSVs into MySQL...")
         try:
             summary = load_to_mariadb(cfg=cfg)
-            print("\n── MySQL Load Complete ──────────────────────────────────")
+            print("\n== MySQL Load Complete ==================================")
             print(f"  Transactions loaded : {summary['transactions_loaded']}")
             print(f"  Rows skipped        : {summary['rows_skipped']}")
             print(f"  Total transactions  : {summary.get('transactions_total', '?')}")
             print(f"  Total addresses     : {summary.get('addresses_total', '?')}")
-            print("─────────────────────────────────────────────────────────\n")
+            print("=========================================================\n")
         except Exception as e:
             logger.error("MySQL load failed: %s", e)
             raise
 
-    # ── Step 2: Neo4j sync ────────────────────────────────────────────────────
+    # Step 2: Neo4j sync
     if args.sync_neo4j or args.neo4j_only:
         sync_new_only = not args.full_neo4j
         mode = "incremental" if sync_new_only else "full"
-        logger.info("Syncing MySQL → Neo4j (%s)...", mode)
+        logger.info("Syncing MySQL -> Neo4j (%s)...", mode)
         try:
             neo4j_summary = mysql_to_neo4j_sync(cfg=cfg, sync_new_only=sync_new_only)
-            print(f"\n── Neo4j Sync Complete ({mode}) ──────────────────────────")
+            print(f"\n== Neo4j Sync Complete ({mode}) ==========================")
             print(f"  Rows synced          : {neo4j_summary['rows_synced']}")
             print(f"  Already in Neo4j     : {neo4j_summary['rows_already_in_neo4j']}")
             print(f"  Total in Neo4j graph : {neo4j_summary.get('graph_total', '?')}")
-            print("─────────────────────────────────────────────────────────\n")
+            print("=========================================================\n")
         except Exception as e:
             logger.warning("Neo4j sync failed (non-fatal): %s", e)
 
-    # ── Step 3: Clustering ────────────────────────────────────────────────────
+    # Step 3: Clustering
     if args.cluster:
         logger.info("Running clustering engine...")
         try:
@@ -131,9 +131,9 @@ def main():
                 persist=True,
                 min_cluster_size=cfg.clustering_min_cluster_size,
             )
-            print(f"\n── Clustering Complete ──────────────────────────────────")
+            print(f"\n== Clustering Complete ==================================")
             print(f"  Total clusters  : {len(results)}")
-            print("─────────────────────────────────────────────────────────\n")
+            print("=========================================================\n")
         except Exception as e:
             logger.warning("Clustering failed (non-fatal): %s", e)
 

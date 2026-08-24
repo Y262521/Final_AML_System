@@ -30,6 +30,9 @@ import time
 from datetime import datetime, timezone
 from typing import Optional, Tuple
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import requests
+from requests.adapters import HTTPAdapter
 from pymongo import ReplaceOne
 
 from ...chains.registry import ChainConfig, get_chain, BLOCKCHAIN_TYPE_UTXO
@@ -75,6 +78,16 @@ class UTXOExtractor(BaseExtractor):
             )
 
         self._api_base = self._resolve_api_base(rpc_url)
+
+        # High-throughput connection pooling session
+        self.session = requests.Session()
+        adapter = HTTPAdapter(
+            pool_connections=20,
+            pool_maxsize=20,
+            max_retries=3,
+        )
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
 
         # MongoDB — shared collections tagged by chain_name
         mongo_client = get_mongo_client(self.cfg)
@@ -185,43 +198,40 @@ class UTXOExtractor(BaseExtractor):
         return self._rpc(method, [], retries=retries)
 
     def _rpc(self, method: str, params: list, retries: int = 3) -> dict:
-        """POST a Bitcoin-Core-compatible JSON-RPC request to Alchemy UTXO API."""
-        import urllib.request, urllib.error
-        payload = json.dumps({
+        """POST a Bitcoin-Core-compatible JSON-RPC request to Alchemy UTXO API using pooled session."""
+        payload = {
             "jsonrpc": "2.0",
             "id": 1,
             "method": method,
             "params": params,
-        }).encode()
-        req = urllib.request.Request(
-            self._api_base,
-            data=payload,
-            headers={"Content-Type": "application/json"},
-        )
+        }
         last_exc = None
         for attempt in range(1, retries + 1):
             try:
-                with urllib.request.urlopen(req, timeout=_REQUEST_TIMEOUT) as r:
-                    data = json.loads(r.read())
-                    if "error" in data and data["error"]:
-                        err = data["error"]
-                        msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
-                        raise RuntimeError(f"RPC error: {msg}")
-                    return data.get("result", {})
-            except urllib.error.HTTPError as e:
-                last_exc = e
-                if e.code == 429:
+                resp = self.session.post(
+                    self._api_base,
+                    json=payload,
+                    timeout=_REQUEST_TIMEOUT,
+                    headers={"Content-Type": "application/json"},
+                )
+                if resp.status_code == 429:
                     wait = 2 ** attempt
                     logger.warning("[%s] Rate limited, waiting %ds", self.chain_name, wait)
                     time.sleep(wait)
                     continue
-                raise RuntimeError(f"[{self.chain_name}] HTTP {e.code}") from e
+                resp.raise_for_status()
+                data = resp.json()
+                if "error" in data and data["error"]:
+                    err = data["error"]
+                    msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                    raise RuntimeError(f"RPC error: {msg}")
+                return data.get("result", {})
             except RuntimeError:
                 raise
             except Exception as exc:
                 last_exc = exc
                 logger.warning("[%s] RPC attempt %d failed: %s", self.chain_name, attempt, exc)
-                time.sleep(1.0 * attempt)
+                time.sleep(0.5 * attempt)
         raise RuntimeError(
             f"[{self.chain_name}] RPC {method} failed after {retries} attempts: {last_exc}"
         )
@@ -459,7 +469,7 @@ class UTXOExtractor(BaseExtractor):
           1. getblockhash(height) → block_hash
           2. getblock(hash, 1) → block header + tx hashes only (verbosity=1)
              This avoids downloading full 5MB+ blocks with all tx data.
-          3. For the first N transactions, fetch via getrawtransaction
+          3. For the first N transactions, fetch via getrawtransaction in parallel
              to get input/output addresses for AML analysis.
         """
         # Step 1: hash for this height
@@ -480,17 +490,25 @@ class UTXOExtractor(BaseExtractor):
         tx_hashes = block_data.get("tx") or []
         block_time = block_data.get("time")
 
-        # Step 3: Fetch full tx data for first N transactions (skip coinbase at index 0)
+        # Step 3: Fetch full tx data for first N transactions in parallel (skip coinbase at index 0)
         MAX_TXS = 15
+        tx_candidates = tx_hashes[1:MAX_TXS + 1]
         full_txs = []
-        for txid in tx_hashes[1:MAX_TXS + 1]:  # skip coinbase (index 0)
-            try:
-                tx_data = self._rpc("getrawtransaction", [txid, True])
-                if isinstance(tx_data, dict):
-                    full_txs.append(tx_data)
-            except Exception as exc:
-                logger.debug("[%s] Could not fetch tx %s: %s", self.chain_name, txid[:16], exc)
-            time.sleep(0.05)  # small delay to avoid rate limiting
+
+        if tx_candidates:
+            def _fetch_single_tx(txid):
+                try:
+                    tx_data = self._rpc("getrawtransaction", [txid, True])
+                    if isinstance(tx_data, dict):
+                        return tx_data
+                except Exception as exc:
+                    logger.debug("[%s] Could not fetch tx %s: %s", self.chain_name, txid[:16], exc)
+                return None
+
+            with ThreadPoolExecutor(max_workers=min(8, len(tx_candidates))) as executor:
+                fetched_results = list(executor.map(_fetch_single_tx, tx_candidates))
+
+            full_txs = [tx for tx in fetched_results if tx is not None]
 
         raw_document = {
             "block_number":      block_number,
@@ -605,31 +623,47 @@ class UTXOExtractor(BaseExtractor):
         from_block = start_block
         to_block   = min(from_block + batch_size - 1, latest_available)
 
-        logger.info("[%s] Fetching blocks %d → %d", self.chain_name, from_block, to_block)
+        logger.info("[%s] Fetching blocks %d -> %d", self.chain_name, from_block, to_block)
 
         total_pairs = 0
-        for block_number in range(from_block, to_block + 1):
+        blocks_to_fetch = list(range(from_block, to_block + 1))
+        fetched_docs = []
+
+        if len(blocks_to_fetch) > 1:
+            with ThreadPoolExecutor(max_workers=min(batch_size, 3)) as block_exec:
+                future_to_b = {
+                    block_exec.submit(self.fetch_block, b): b
+                    for b in blocks_to_fetch
+                }
+                for fut in as_completed(future_to_b):
+                    b_num = future_to_b[fut]
+                    try:
+                        raw_data = fut.result()
+                        fetched_docs.append((b_num, raw_data))
+                    except Exception as exc:
+                        logger.warning("[%s] Block %d failed (skipping): %s", self.chain_name, b_num, exc)
+            fetched_docs.sort(key=lambda x: x[0])
+        else:
             try:
-                raw_data = self.fetch_block(block_number)
-                self.save_to_local_backup(raw_data, block_number)
-                pair_count = self.save_to_db(raw_data)
-                total_pairs += pair_count
-                logger.info(
-                    "[%s] Block %d: %d txs → %d input/output pairs",
-                    self.chain_name, block_number,
-                    raw_data.get("transaction_count", 0),
-                    pair_count,
-                )
+                raw_data = self.fetch_block(from_block)
+                fetched_docs.append((from_block, raw_data))
             except Exception as exc:
-                logger.warning(
-                    "[%s] Block %d failed (skipping): %s",
-                    self.chain_name, block_number, exc,
-                )
-            time.sleep(0.3)
+                logger.warning("[%s] Block %d failed (skipping): %s", self.chain_name, from_block, exc)
+
+        for block_number, raw_data in fetched_docs:
+            self.save_to_local_backup(raw_data, block_number)
+            pair_count = self.save_to_db(raw_data)
+            total_pairs += pair_count
+            logger.info(
+                "[%s] Block %d: %d txs -> %d input/output pairs",
+                self.chain_name, block_number,
+                raw_data.get("transaction_count", 0),
+                pair_count,
+            )
 
         msg = (
-            f"[{self.chain_name}] Saved blocks {from_block} → {to_block} "
-            f"({to_block - from_block + 1} blocks, {total_pairs} tx pairs)"
+            f"[{self.chain_name}] Saved blocks {from_block} -> {to_block} "
+            f"({len(fetched_docs)} blocks, {total_pairs} tx pairs)"
         )
         print(msg)
         logger.info(msg)

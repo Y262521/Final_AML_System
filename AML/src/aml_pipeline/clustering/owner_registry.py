@@ -902,3 +902,146 @@ def seed_owner_registry(
     finally:
         engine.dispose()
 
+
+def pull_labels_from_database(
+    cfg: Config | None = None,
+    *,
+    label: str | None = None,
+    category: str | None = None,
+    chain: str | None = None,
+    limit: int = 1000,
+) -> list[dict[str, Any]]:
+    """Pull labeled wallet addresses directly from the database table (wallet_labels)."""
+    cfg = cfg or load_config()
+    from ..etl.load.mariadb_loader import create_tables_if_not_exist
+
+    create_tables_if_not_exist(cfg)
+    engine = get_maria_engine(cfg)
+    try:
+        with engine.connect() as conn:
+            conditions = ["1=1"]
+            params: dict[str, Any] = {"limit": limit}
+            if label:
+                conditions.append("UPPER(label) = :label")
+                params["label"] = label.upper()
+            if category:
+                conditions.append("category = :category")
+                params["category"] = category
+            if chain:
+                conditions.append("chain = :chain")
+                params["chain"] = chain.lower()
+
+            where_clause = " AND ".join(conditions)
+            query = text(
+                f"""
+                SELECT address, label, category, name, chain, description, source, created_at, updated_at
+                FROM wallet_labels
+                WHERE {where_clause}
+                ORDER BY created_at DESC, address ASC
+                LIMIT :limit
+                """
+            )
+            rows = conn.execute(query, params).mappings().all()
+            return [
+                {
+                    "address": row["address"],
+                    "label": row["label"],
+                    "category": row.get("category"),
+                    "name": row.get("name"),
+                    "chain": row.get("chain") or "ethereum",
+                    "description": row.get("description"),
+                    "source": row.get("source") or "database",
+                    "created_at": str(row["created_at"]) if row.get("created_at") else None,
+                    "updated_at": str(row["updated_at"]) if row.get("updated_at") else None,
+                }
+                for row in rows
+            ]
+    finally:
+        engine.dispose()
+
+
+def sync_database_labels(
+    cfg: Config | None = None,
+    labeled_wallets: Sequence[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Sync or seed ground truth & registry labels directly into the wallet_labels database table."""
+    cfg = cfg or load_config()
+    from ..etl.load.mariadb_loader import create_tables_if_not_exist
+
+    create_tables_if_not_exist(cfg)
+
+    # If no wallets provided, load ground truth benchmark defaults
+    if labeled_wallets is None:
+        try:
+            from scripts.benchmark_ground_truth import KNOWN_BAD_WALLETS, KNOWN_CLEAN_WALLETS
+            labeled_wallets = list(KNOWN_BAD_WALLETS) + list(KNOWN_CLEAN_WALLETS)
+        except Exception:
+            try:
+                import sys
+                from pathlib import Path
+                scripts_dir = str(Path(cfg.base_dir) / "scripts")
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                from benchmark_ground_truth import KNOWN_BAD_WALLETS, KNOWN_CLEAN_WALLETS
+                labeled_wallets = list(KNOWN_BAD_WALLETS) + list(KNOWN_CLEAN_WALLETS)
+            except Exception as e:
+                logger.warning(f"Could not load benchmark_ground_truth: {e}")
+                labeled_wallets = []
+
+    engine = get_maria_engine(cfg)
+    try:
+        with engine.begin() as conn:
+            inserted_or_updated = 0
+            for w in (labeled_wallets or []):
+                addr = (w.get("address") or "").strip().lower()
+                if not addr or len(addr) != 42:
+                    continue
+                label_val = (w.get("ground_truth") or w.get("label") or "BAD").upper()
+                cat = w.get("category") or "general"
+                name = w.get("name") or addr
+                chain_name = w.get("chain") or "ethereum"
+                desc = w.get("description") or ""
+                source_val = w.get("source") or "ground_truth_benchmark"
+
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO wallet_labels (
+                            address, label, category, name, chain, description, source
+                        )
+                        VALUES (
+                            :address, :label, :category, :name, :chain, :description, :source
+                        )
+                        ON DUPLICATE KEY UPDATE
+                            label = VALUES(label),
+                            category = VALUES(category),
+                            name = VALUES(name),
+                            chain = VALUES(chain),
+                            description = VALUES(description),
+                            source = VALUES(source),
+                            updated_at = CURRENT_TIMESTAMP
+                        """
+                    ),
+                    {
+                        "address": addr,
+                        "label": label_val,
+                        "category": cat,
+                        "name": name,
+                        "chain": chain_name,
+                        "description": desc,
+                        "source": source_val,
+                    },
+                )
+                inserted_or_updated += 1
+
+            total_count = int(
+                conn.execute(text("SELECT COUNT(*) FROM wallet_labels")).scalar_one()
+            )
+            return {
+                "synced_count": inserted_or_updated,
+                "total_db_labels": total_count,
+            }
+    finally:
+        engine.dispose()
+
+

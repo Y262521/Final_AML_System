@@ -16,6 +16,11 @@ from .connections import (
 )
 from .utils import build_flat_transaction_documents, rpc_call_with_retry, to_jsonable
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import requests
+from requests.adapters import HTTPAdapter
+
 logger = logging.getLogger(__name__)
 
 _MAX_FETCH_BLOCKS_PER_RUN = 5
@@ -28,6 +33,12 @@ class EthereumExtractor(BaseExtractor):
         """Initialize Web3 and Mongo connections."""
         super().__init__(cfg)
         self.w3 = get_web3(self.cfg)
+        self._rpc_url = getattr(self.cfg, "eth_rpc_url", "")
+        self.session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=3)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
         self.raw_collection = get_raw_collection(self.cfg)
         self.transaction_collection = get_flat_transaction_collection(self.cfg)
         self.collection = self.raw_collection
@@ -76,26 +87,63 @@ class EthereumExtractor(BaseExtractor):
         return len(flat_documents)
 
     def fetch_block(self, block_number: int) -> dict:
-        """Fetch a full block, receipts, and logs as a raw document."""
+        """Fetch a full block, receipts, and logs as a raw document using concurrent receipt resolution."""
         block = rpc_call_with_retry(lambda: self.w3.eth.get_block(block_number, full_transactions=True))
 
+        tx_list = block.get("transactions", []) or []
         receipts = []
         logs = []
-        for tx in block["transactions"]:
-            tx_hash = tx["hash"]
-            receipt = rpc_call_with_retry(lambda: self.w3.eth.get_transaction_receipt(tx_hash))
-            receipts.append(receipt)
-            logs.extend(receipt.get("logs", []))
+
+        # Try fast batch receipt fetch if using Alchemy endpoint (1 single HTTP call for entire block)
+        if self._rpc_url and "alchemy.com" in self._rpc_url:
+            try:
+                hex_b = hex(block_number)
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "alchemy_getTransactionReceipts",
+                    "params": [{"blockNumber": hex_b}],
+                }
+                resp = self.session.post(self._rpc_url, json=payload, timeout=30)
+                if resp.status_code == 200:
+                    res_json = resp.json()
+                    alchemy_receipts = res_json.get("result", {}).get("receipts")
+                    if alchemy_receipts and isinstance(alchemy_receipts, list):
+                        receipts = alchemy_receipts
+                        for r in alchemy_receipts:
+                            logs.extend(r.get("logs", []))
+            except Exception as exc:
+                logger.debug("[ethereum] alchemy_getTransactionReceipts fallback note: %s", exc)
+
+        if tx_list and not receipts:
+            def _fetch_single_receipt(tx):
+                tx_hash = tx.get("hash")
+                if not tx_hash:
+                    return None
+                try:
+                    return rpc_call_with_retry(lambda: self.w3.eth.get_transaction_receipt(tx_hash))
+                except Exception as exc:
+                    logger.warning("[ethereum] Failed to get receipt for %s: %s", tx_hash, exc)
+                    return None
+
+            max_workers = min(10, max(2, len(tx_list)))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                receipt_results = list(executor.map(_fetch_single_receipt, tx_list))
+
+            for r in receipt_results:
+                if r:
+                    receipts.append(r)
+                    logs.extend(r.get("logs", []))
 
         raw_document = {
             "block_number": block_number,
             "fetched_at": datetime.now(timezone.utc).isoformat(),
             "network": self.cfg.eth_network,
-            "transaction_count": len(block["transactions"]),
+            "transaction_count": len(tx_list),
             "receipt_count": len(receipts),
             "log_count": len(logs),
             "block": block,
-            "transactions": block["transactions"],
+            "transactions": tx_list,
             "receipts": receipts,
             "logs": logs,
         }
@@ -146,8 +194,28 @@ class EthereumExtractor(BaseExtractor):
         logger.info("Fetching blocks %s -> %s", from_block, to_block)
 
         total_transactions = 0
-        for block_number in range(from_block, to_block + 1):
-            raw_data = self.fetch_block(block_number)
+        blocks_to_fetch = list(range(from_block, to_block + 1))
+        fetched_docs = []
+
+        if len(blocks_to_fetch) > 1:
+            with ThreadPoolExecutor(max_workers=min(batch_size, 5)) as block_exec:
+                future_to_b = {
+                    block_exec.submit(self.fetch_block, b): b
+                    for b in blocks_to_fetch
+                }
+                for fut in as_completed(future_to_b):
+                    b_num = future_to_b[fut]
+                    try:
+                        raw_data = fut.result()
+                        fetched_docs.append((b_num, raw_data))
+                    except Exception as exc:
+                        logger.error("[ethereum] Block %d fetch failed: %s", b_num, exc)
+            fetched_docs.sort(key=lambda x: x[0])
+        else:
+            raw_data = self.fetch_block(from_block)
+            fetched_docs.append((from_block, raw_data))
+
+        for block_number, raw_data in fetched_docs:
             # Save backup before Mongo insert to avoid _id serialization issues.
             self.save_to_local_backup(raw_data, block_number)
             flattened_count = self.save_to_db(raw_data)
@@ -159,12 +227,11 @@ class EthereumExtractor(BaseExtractor):
                 flattened_count,
             )
 
-        fetched_blocks = (to_block - from_block) + 1
+        fetched_blocks = len(fetched_docs)
         message = f"Saved blocks {from_block} -> {to_block} ({fetched_blocks} blocks)"
         print(message)
         logger.info(message)
         logger.info("Saved %s flattened transaction documents", total_transactions)
-        time.sleep(0.2)
 
         return from_block, to_block
 

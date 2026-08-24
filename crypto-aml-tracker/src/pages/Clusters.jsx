@@ -7,6 +7,7 @@ import {
     getGraphData,
     getCluster,
     runClustering,
+    syncClusterLabelsFromDb,
 } from '../services/transactionService';
 import { filterEdgesData, applyRadialLayout } from '../utils/graphUtils';
 import Loader from '../components/common/Loader';
@@ -852,6 +853,19 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
         setConflictData(null);
     };
 
+    const handleSyncDbLabels = async () => {
+        setRunning(true);
+        try {
+            const res = await syncClusterLabelsFromDb();
+            setOwnerSuccess(res.message || 'Successfully pulled and synced labels from database.');
+            startTransition(() => loadData());
+        } catch (err) {
+            setError(err.message || 'Failed to sync labels from database.');
+        } finally {
+            setRunning(false);
+        }
+    };
+
     const closeDrawer = () => setSelectedCluster(null);
     const openClusterDrawer = (cluster) => setSelectedCluster(cluster);
 
@@ -897,10 +911,15 @@ export default function Clusters({ onAddressClick, onShowAnalysisMenu }) {
                 <div>
                     <div style={{ fontSize: '18px', fontWeight: '700', color: '#C8B98A' }}>Wallet Clusters</div>
                     <div style={{ fontSize: '12px', color: '#8A9DB5', marginTop: '2px' }}>
-                        {clusters.length} clusters · owner-list driven labeling
+                        {clusters.length} clusters · DB & owner-list driven labeling
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button onClick={handleSyncDbLabels} disabled={running} style={{
+                        padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(74,222,128,0.30)',
+                        background: 'rgba(74,222,128,0.12)', color: '#4ADE80', fontSize: '12px', fontWeight: '700',
+                        cursor: running ? 'not-allowed' : 'pointer',
+                    }} title="Pull labels from database and update clusters">⚡ Sync Labels from DB</button>
                     <button onClick={() => openOwnerModal(null)} style={{
                         padding: '8px 14px', borderRadius: '8px', border: '1px solid rgba(201,168,76,0.25)',
                         background: 'rgba(201,168,76,0.08)', color: '#C9A84C', fontSize: '12px', fontWeight: '700',

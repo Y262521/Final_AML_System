@@ -797,14 +797,16 @@ class PlacementAnalysisEngine:
         if not incoming:
             return None
         min_unique = max(2, int(self.cfg.placement_smurfing_min_unique_senders or 6))
-        unique_senders = {tx.source_entity_id for tx in incoming}
+        unique_senders = {tx.from_address for tx in incoming}
         if len(unique_senders) < min_unique:
-            return None
+            unique_senders = {tx.source_entity_id for tx in incoming}
+            if len(unique_senders) < min_unique:
+                return None
         wallet_age = max(0.0, profile.entity.last_seen_at - profile.entity.first_seen_at)
         max_age = max(60, int(self.cfg.placement_smurfing_max_wallet_age_seconds or 604800))
         if wallet_age > max_age:
             return None
-        sender_counts = Counter(tx.source_entity_id for tx in incoming)
+        sender_counts = Counter(tx.from_address for tx in incoming)
         distributed_ratio = sum(1 for count in sender_counts.values() if count == 1) / max(1, len(unique_senders))
         sender_factor = min(1.0, len(unique_senders) / float(min_unique * 2))
         age_factor = 1.0 - min(1.0, wallet_age / max_age)

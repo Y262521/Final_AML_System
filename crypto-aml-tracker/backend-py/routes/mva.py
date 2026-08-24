@@ -124,7 +124,7 @@ async def ensure_mva_schema():
             """)
 
             await conn.commit()
-            print("✓ MVA schema initialized")
+            print("[OK] MVA schema initialized")
             # Normalize legacy native-ETH rows so UNIQUE(address, token_symbol, token_contract) dedupes correctly
             try:
                 await cur.execute(
