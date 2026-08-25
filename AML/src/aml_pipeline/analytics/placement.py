@@ -758,9 +758,8 @@ class PlacementAnalysisEngine:
             unique_senders = len({tx.source_entity_id for tx in subset})
             support_factor = min(1.0, len(subset) / float(min_tx * 2))
             variance_factor = 1.0 - min(1.0, rel_variance / max_variance)
-            amount_factor = min(1.0, sum(values) / max(self.cfg.high_value_threshold_eth, 1.0))
             confidence = _clamp(
-                0.35 * support_factor + 0.35 * variance_factor + 0.30 * amount_factor
+                0.50 * support_factor + 0.50 * variance_factor
                 + (0.05 if unique_senders >= 3 else 0.0)
             )
             metrics = {
@@ -894,11 +893,10 @@ class PlacementAnalysisEngine:
                 interval_var = _relative_variance(intervals) if intervals else 0.0
                 
                 cadence_factor = min(1.0, tx_per_min / 3.0)
-                volume_factor = min(1.0, total_val / max(self.cfg.high_value_threshold_eth, 1.0))
                 burst_size_factor = min(1.0, len(subset) / 10.0)
                 regularity_factor = 1.0 - min(1.0, interval_var / 1.5)
                 
-                conf = _clamp(0.35 * cadence_factor + 0.25 * burst_size_factor + 0.25 * volume_factor + 0.15 * regularity_factor)
+                conf = _clamp(0.45 * cadence_factor + 0.35 * burst_size_factor + 0.20 * regularity_factor)
                 if conf > best_conf:
                     best_conf = conf
                     best_subset = subset
