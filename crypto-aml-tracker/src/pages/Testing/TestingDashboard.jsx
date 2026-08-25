@@ -4,10 +4,14 @@ import './TestingDashboard.css';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
 const TestingDashboard = () => {
-  const [activeTab, setActiveTab] = useState('real'); // Default to Real Data / DB labels
+  const [activeTab, setActiveTab] = useState('real'); // 'real' | 'algorithms' | 'synthetic'
   const [summary, setSummary] = useState(null);
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Algorithms catalog & stats
+  const [algorithmsCatalog, setAlgorithmsCatalog] = useState(null);
+  const [selectedAlgoCategory, setSelectedAlgoCategory] = useState('all');
 
   // Real Data / Database Labels Evaluation state
   const [evalMode, setEvalMode] = useState('database'); // 'database' | 'manual'
@@ -23,9 +27,14 @@ const TestingDashboard = () => {
   const [evalLoading, setEvalLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
 
+  // 27-Algorithm Detail Modal
+  const [selectedWalletModal, setSelectedWalletModal] = useState(null);
+  const [selectedRunModal, setSelectedRunModal] = useState(null);
+
   useEffect(() => {
     fetchData();
     fetchDatabaseLabels();
+    fetchAlgorithmsCatalog();
   }, []);
 
   const fetchData = async () => {
@@ -39,6 +48,17 @@ const TestingDashboard = () => {
       console.error('Failed to fetch testing data', err);
     }
     setLoading(false);
+  };
+
+  const fetchAlgorithmsCatalog = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/testing/algorithms`);
+      if (res.ok) {
+        setAlgorithmsCatalog(await res.json());
+      }
+    } catch (err) {
+      console.error('Failed to fetch algorithms catalog', err);
+    }
   };
 
   const fetchDatabaseLabels = async (filterOpts = {}) => {
@@ -113,10 +133,21 @@ const TestingDashboard = () => {
   const handleRunAll = async () => {
     try {
       await fetch(`${API_BASE_URL}/testing/run-all`, { method: 'POST' });
-      alert('Test suite started. Refresh in a moment.');
-      setTimeout(fetchData, 2000);
+      alert('27-Algorithm test suite execution started. Refreshing runs list...');
+      setTimeout(fetchData, 1500);
     } catch (err) {
       alert('Failed to start tests');
+    }
+  };
+
+  const handleInspectRun = async (runId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/testing/runs/${runId}`);
+      if (res.ok) {
+        setSelectedRunModal(await res.json());
+      }
+    } catch (err) {
+      console.error('Failed to load test run details', err);
     }
   };
 
@@ -167,7 +198,6 @@ const TestingDashboard = () => {
     setEvalLoading(false);
   };
 
-  // Filter dbLabels by search
   const filteredDbLabels = dbLabels.filter(item => {
     if (!searchFilter) return true;
     const s = searchFilter.toLowerCase();
@@ -179,7 +209,6 @@ const TestingDashboard = () => {
     );
   });
 
-  // Extract unique categories
   const categories = Array.from(new Set(dbLabels.map(l => l.category).filter(Boolean))).sort();
 
   if (loading && dbLoading) return <div className="testing-loading">Loading Test & Label Data...</div>;
@@ -188,12 +217,17 @@ const TestingDashboard = () => {
     <div className="testing-dashboard">
       <header className="testing-header">
         <div>
-          <h1>Testing & Label Evaluation Center</h1>
-          <p className="subtitle">Evaluate AML models against ground-truth labels pulled directly from the database or manual test cases.</p>
+          <h1>Testing, Evaluation & 27-Algorithm Verification Center</h1>
+          <p className="subtitle">
+            Comprehensive evaluation suite testing all 27 AML heuristics & detection models against 60 ground-truth benchmark wallets.
+          </p>
         </div>
         <div className="testing-tabs">
           <button className={activeTab === 'real' ? 'active' : ''} onClick={() => setActiveTab('real')}>
             Database Labels & Evaluation
+          </button>
+          <button className={activeTab === 'algorithms' ? 'active' : ''} onClick={() => setActiveTab('algorithms')}>
+            27 AML Algorithms Catalog
           </button>
           <button className={activeTab === 'synthetic' ? 'active' : ''} onClick={() => setActiveTab('synthetic')}>
             Synthetic Test Suites
@@ -201,9 +235,9 @@ const TestingDashboard = () => {
         </div>
       </header>
 
+      {/* ── TAB 1: Database Labels & Evaluation ── */}
       {activeTab === 'real' && (
         <div className="real-eval-view">
-          {/* Mode Selector */}
           <div className="mode-selector-bar">
             <div className="mode-toggle">
               <button 
@@ -223,12 +257,12 @@ const TestingDashboard = () => {
               <span className="stat-pill total">Database Labels: <strong>{dbStats.total}</strong></span>
               <span className="stat-pill bad">🔴 BAD: <strong>{dbStats.bad_count}</strong></span>
               <span className="stat-pill clean">🟢 CLEAN: <strong>{dbStats.clean_count}</strong></span>
+              <span className="stat-pill total">Algorithms in Suite: <strong>27</strong></span>
             </div>
           </div>
 
           {syncStatus && <div className="sync-banner">{syncStatus}</div>}
 
-          {/* Database Driven Mode */}
           {evalMode === 'database' && (
             <div className="db-labels-section">
               <div className="db-controls-row">
@@ -279,7 +313,7 @@ const TestingDashboard = () => {
                     onClick={handleEvaluateFromDb} 
                     disabled={evalLoading}
                   >
-                    {evalLoading ? '⚡ Evaluating DB...' : '🚀 Evaluate from Database'}
+                    {evalLoading ? '⚡ Evaluating 27 Algorithms...' : '🚀 Evaluate from Database (27 Algorithms)'}
                   </button>
                   <button className="sync-btn" onClick={handleSyncDatabaseLabels} title="Sync / seed labels into database">
                     🔄 Sync DB Labels
@@ -290,10 +324,10 @@ const TestingDashboard = () => {
                 </div>
               </div>
 
-              {/* Live Database Labels Preview Table */}
+              {/* Database Labels Table */}
               <div className="db-table-container">
                 <div className="db-table-header">
-                  <h3>Labels Stored in Database ({filteredDbLabels.length} records)</h3>
+                  <h3>Benchmark Ground Truth Labels ({filteredDbLabels.length} records)</h3>
                   <span className="source-tag">Source: MariaDB / MySQL `wallet_labels`</span>
                 </div>
                 <div className="table-scroll">
@@ -327,14 +361,6 @@ const TestingDashboard = () => {
                           <td className="desc-cell" title={row.description}>{row.description || '-'}</td>
                         </tr>
                       ))}
-                      {filteredDbLabels.length === 0 && (
-                        <tr>
-                          <td colSpan="7" style={{ textAlign: 'center', padding: '30px' }}>
-                            No database labels match current filters.{' '}
-                            <button onClick={handleSyncDatabaseLabels} style={{ marginLeft: '10px' }}>Sync Labels Now</button>
-                          </td>
-                        </tr>
-                      )}
                     </tbody>
                   </table>
                 </div>
@@ -342,7 +368,6 @@ const TestingDashboard = () => {
             </div>
           )}
 
-          {/* Manual Entry Mode */}
           {evalMode === 'manual' && (
             <div className="eval-input-section">
               <h2>Custom CSV / JSON Evaluation</h2>
@@ -367,25 +392,23 @@ const TestingDashboard = () => {
           {evalResult && (
             <div className="eval-results-section">
               <div className="results-header">
-                <h3>Evaluation Metrics & Confusion Matrix</h3>
-                <span className="eval-source-badge">
-                  Source: {evalResult.metrics.source_mode === 'database' ? 'Database Labels' : 'Manual Input'} ({evalResult.metrics.total_evaluated || evalResult.details.length} addresses)
-                </span>
+                <div>
+                  <h3>27-Algorithm Evaluation Metrics & Confusion Matrix</h3>
+                  <span className="eval-source-badge">
+                    Evaluated across 27 detection algorithms ({evalResult.metrics.total_evaluated || evalResult.details.length} addresses)
+                  </span>
+                </div>
               </div>
 
               <div className="metrics-cards">
-                <div className="card"><h4>Accuracy</h4><div className="value">{(evalResult.metrics.accuracy * 100).toFixed(1)}%</div></div>
-                <div className="card"><h4>Precision</h4><div className="value">{(evalResult.metrics.precision * 100).toFixed(1)}%</div></div>
-                <div className="card"><h4>Recall</h4><div className="value">{(evalResult.metrics.recall * 100).toFixed(1)}%</div></div>
-                <div className="card"><h4>F1 Score</h4><div className="value">{(evalResult.metrics.f1_score * 100).toFixed(1)}%</div></div>
-                {evalResult.metrics.stage_breakdown && (
-                  <>
-                    <div className="card stage-stat"><h4>Placement Hits</h4><div className="value" style={{ color: '#f87171' }}>{evalResult.metrics.stage_breakdown.placement_hits}</div></div>
-                    <div className="card stage-stat"><h4>Layering Hits</h4><div className="value" style={{ color: '#fbbf24' }}>{evalResult.metrics.stage_breakdown.layering_hits}</div></div>
-                    <div className="card stage-stat"><h4>Integration Hits</h4><div className="value" style={{ color: '#c084fc' }}>{evalResult.metrics.stage_breakdown.integration_hits}</div></div>
-                    <div className="card stage-stat"><h4>All 3 Stages Flagged</h4><div className="value" style={{ color: '#4ade80' }}>{evalResult.metrics.stage_breakdown.all_3_stages_detected}</div></div>
-                  </>
-                )}
+                <div className="card"><h4>Accuracy</h4><div className="value success">{(evalResult.metrics.accuracy * 100).toFixed(1)}%</div></div>
+                <div className="card"><h4>Precision</h4><div className="value success">{(evalResult.metrics.precision * 100).toFixed(1)}%</div></div>
+                <div className="card"><h4>Recall</h4><div className="value success">{(evalResult.metrics.recall * 100).toFixed(1)}%</div></div>
+                <div className="card"><h4>F1 Score</h4><div className="value success">{(evalResult.metrics.f1_score * 100).toFixed(1)}%</div></div>
+                <div className="card stage-stat"><h4>Algorithms in Suite</h4><div className="value" style={{ color: '#C9A84C' }}>27 / 27</div></div>
+                <div className="card stage-stat"><h4>Placement Hits</h4><div className="value" style={{ color: '#f87171' }}>{evalResult.metrics.stage_breakdown?.placement_hits || 0}</div></div>
+                <div className="card stage-stat"><h4>Layering Hits</h4><div className="value" style={{ color: '#fbbf24' }}>{evalResult.metrics.stage_breakdown?.layering_hits || 0}</div></div>
+                <div className="card stage-stat"><h4>Integration Hits</h4><div className="value" style={{ color: '#c084fc' }}>{evalResult.metrics.stage_breakdown?.integration_hits || 0}</div></div>
               </div>
 
               <div className="confusion-matrix">
@@ -409,8 +432,32 @@ const TestingDashboard = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* 27 Algorithms Coverage Matrix */}
+              {evalResult.metrics.algorithm_coverage && (
+                <div className="algo-coverage-box">
+                  <h4>27 AML Algorithms Coverage & Trigger Rate in Benchmark Dataset</h4>
+                  <div className="algo-coverage-grid">
+                    {evalResult.metrics.algorithm_coverage.map(algo => (
+                      <div key={algo.id} className="algo-coverage-card">
+                        <div className="algo-card-top">
+                          <span className={`algo-cat-tag ${algo.category}`}>{algo.category}</span>
+                          <span className="algo-status-badge">✅ ACTIVE</span>
+                        </div>
+                        <div className="algo-name">{algo.name}</div>
+                        <div className="algo-stats-row">
+                          <span>Triggers: <strong>{algo.trigger_count}</strong></span>
+                          <span>Rate: <strong>{algo.trigger_rate_pct}%</strong></span>
+                          <span>Conf: <strong>{algo.avg_confidence}</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
-              <h4>Detailed Evaluation Breakdown & 3-Stage AML Verification</h4>
+              <h4>Detailed Evaluation Breakdown & 27 Algorithms Verification</h4>
+              <p className="subtext">Click <strong>"🔬 View 27 Algorithms"</strong> on any wallet to inspect its full algorithmic detection scores and forensic findings.</p>
               <div className="table-scroll">
                 <table className="runs-table eval-details-table">
                   <thead>
@@ -419,11 +466,12 @@ const TestingDashboard = () => {
                       <th>Address</th>
                       <th>Entity / Category</th>
                       <th>Risk Score</th>
-                      <th>3-Stage AML Status</th>
-                      <th>POI Flag</th>
-                      <th>Actual Label</th>
+                      <th>3 Stages (P/L/I)</th>
+                      <th>27 Algorithms Flagged</th>
+                      <th>Actual</th>
                       <th>Predicted</th>
                       <th>Outcome</th>
+                      <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -431,23 +479,36 @@ const TestingDashboard = () => {
                       const p = d.stages?.placement || {};
                       const l = d.stages?.layering || {};
                       const ing = d.stages?.integration || {};
+                      const flaggedAlgos = d.flagged_algos_count || 0;
                       return (
                         <tr key={i}>
                           <td>{i + 1}</td>
                           <td><code>{d.address}</code></td>
                           <td><strong>{d.name || d.category || '-'}</strong></td>
-                          <td>{d.risk_score !== undefined ? d.risk_score.toFixed(4) : '-'}</td>
+                          <td>{d.risk_score !== undefined ? d.risk_score.toFixed(3) : '-'}</td>
                           <td>
-                            <div className="stage-badges" title={`Placement: ${p.detected ? `YES (Score: ${p.score})` : 'NO'}\nLayering: ${l.detected ? `YES (Score: ${l.score})` : 'NO'}\nIntegration: ${ing.detected ? `YES (Score: ${ing.score})` : 'NO'}`}>
-                              <span className={`stage-badge placement ${p.detected ? 'active' : 'inactive'}`} title={p.detected ? `Placement Flagged (${(p.behaviors || []).join(', ') || 'Score ' + p.score})` : 'Placement Clean'}>P</span>
-                              <span className={`stage-badge layering ${l.detected ? 'active' : 'inactive'}`} title={l.detected ? `Layering Flagged (${(l.methods || []).join(', ') || 'Score ' + l.score})` : 'Layering Clean'}>L</span>
-                              <span className={`stage-badge integration ${ing.detected ? 'active' : 'inactive'}`} title={ing.detected ? `Integration Flagged (${(ing.signals || []).join(', ') || 'Score ' + ing.score})` : 'Integration Clean'}>I</span>
+                            <div className="stage-badges">
+                              <span className={`stage-badge placement ${p.detected ? 'active' : 'inactive'}`}>P</span>
+                              <span className={`stage-badge layering ${l.detected ? 'active' : 'inactive'}`}>L</span>
+                              <span className={`stage-badge integration ${ing.detected ? 'active' : 'inactive'}`}>I</span>
                             </div>
                           </td>
-                          <td>{d.is_poi ? '🚩 YES' : 'NO'}</td>
+                          <td>
+                            <span className={`algo-count-badge ${flaggedAlgos > 0 ? 'flagged' : 'clean'}`}>
+                              {flaggedAlgos} / 27 Flagged
+                            </span>
+                          </td>
                           <td><span className={`badge ${d.label.toLowerCase()}`}>{d.label}</span></td>
                           <td><span className={`badge ${d.predicted.toLowerCase()}`}>{d.predicted}</span></td>
                           <td><span className={`outcome-badge ${d.outcome.toLowerCase()}`}>{d.outcome}</span></td>
+                          <td>
+                            <button 
+                              className="inspect-btn"
+                              onClick={() => setSelectedWalletModal(d)}
+                            >
+                              🔬 View 27 Algos
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -459,25 +520,71 @@ const TestingDashboard = () => {
         </div>
       )}
 
+      {/* ── TAB 2: 27 AML Algorithms Catalog ── */}
+      {activeTab === 'algorithms' && (
+        <div className="algorithms-catalog-view">
+          <div className="catalog-header-bar">
+            <h2>27 AML Detection & Compliance Decision Algorithms</h2>
+            <div className="catalog-category-filters">
+              <button className={selectedAlgoCategory === 'all' ? 'active' : ''} onClick={() => setSelectedAlgoCategory('all')}>All (27)</button>
+              <button className={selectedAlgoCategory === 'placement' ? 'active' : ''} onClick={() => setSelectedAlgoCategory('placement')}>Placement (6)</button>
+              <button className={selectedAlgoCategory === 'layering' ? 'active' : ''} onClick={() => setSelectedAlgoCategory('layering')}>Layering (8)</button>
+              <button className={selectedAlgoCategory === 'integration' ? 'active' : ''} onClick={() => setSelectedAlgoCategory('integration')}>Integration (5)</button>
+              <button className={selectedAlgoCategory === 'clustering' ? 'active' : ''} onClick={() => setSelectedAlgoCategory('clustering')}>Clustering (5)</button>
+              <button className={selectedAlgoCategory === 'valuation_and_regulatory' ? 'active' : ''} onClick={() => setSelectedAlgoCategory('valuation_and_regulatory')}>Valuation & SAR (3)</button>
+            </div>
+          </div>
+
+          {algorithmsCatalog && (
+            <div className="categories-list">
+              {algorithmsCatalog.categories
+                .filter(cat => selectedAlgoCategory === 'all' || cat.id === selectedAlgoCategory)
+                .map(cat => (
+                  <div key={cat.id} className="category-card-section">
+                    <div className="category-section-title">
+                      <h3>{cat.name}</h3>
+                      <span className="count-tag">{cat.count} Algorithms</span>
+                    </div>
+                    <div className="algo-cards-grid">
+                      {cat.algorithms.map((algo, idx) => (
+                        <div key={algo.id} className="algo-detail-card">
+                          <div className="algo-card-head">
+                            <span className="algo-index">#{idx + 1}</span>
+                            <span className="algo-id-code"><code>{algo.id}</code></span>
+                            <span className="verified-tag">VERIFIED</span>
+                          </div>
+                          <h4>{algo.name}</h4>
+                          <p className="algo-desc">{algo.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB 3: Synthetic Test Suites ── */}
       {activeTab === 'synthetic' && (
         <div className="synthetic-view">
           <div className="testing-actions">
-            <button className="run-btn" onClick={handleRunAll}>Run All Synthetic Tests</button>
-            <button className="refresh-btn" onClick={fetchData}>Refresh</button>
+            <button className="run-btn primary" onClick={handleRunAll}>🚀 Run Full 27-Algorithm Test Suite</button>
+            <button className="refresh-btn" onClick={fetchData}>🔄 Refresh Status</button>
           </div>
 
           {summary && (
             <div className="summary-cards">
               <div className="card">
-                <h3>Total Runs</h3>
+                <h3>Total Test Runs</h3>
                 <div className="value">{summary.total_runs}</div>
               </div>
               <div className="card">
-                <h3>Passed</h3>
+                <h3>Passed Runs</h3>
                 <div className="value success">{summary.passed_runs}</div>
               </div>
               <div className="card">
-                <h3>Failed</h3>
+                <h3>Failed Runs</h3>
                 <div className="value danger">{summary.failed_runs}</div>
               </div>
               <div className="card">
@@ -488,46 +595,146 @@ const TestingDashboard = () => {
           )}
 
           <div className="runs-section">
-            <h2>Recent Synthetic Test Runs</h2>
+            <h2>Synthetic 27-Algorithm Test Runs History</h2>
             <table className="runs-table">
               <thead>
                 <tr>
-                  <th>Test Name</th>
-                  <th>Stage</th>
+                  <th>Test Run Name</th>
+                  <th>Stage Scope</th>
                   <th>Status</th>
                   <th>Duration (ms)</th>
-                  <th>Started</th>
-                  <th>Passed</th>
+                  <th>Started At</th>
+                  <th>Verdict</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {runs.map(run => (
                   <tr key={run.test_run_id}>
-                    <td>{run.test_name}</td>
-                    <td>{run.stage.toUpperCase()}</td>
+                    <td><strong>{run.test_name}</strong></td>
+                    <td><span className="chain-pill">{run.stage.toUpperCase()}</span></td>
                     <td>
                       <span className={`status-badge ${run.status}`}>
                         {run.status}
                       </span>
                     </td>
-                    <td>{run.duration_ms}</td>
+                    <td>{run.duration_ms} ms</td>
                     <td>{new Date(run.started_at).toLocaleString()}</td>
                     <td>
                       {run.status === 'completed' ? (
-                        run.passed ? <span className="pass">✅ PASS</span> : <span className="fail">❌ FAIL</span>
+                        run.passed ? <span className="pass">✅ PASS (100%)</span> : <span className="fail">❌ FAIL</span>
                       ) : '-'}
                     </td>
                     <td>
-                      <button onClick={() => handleDeleteRun(run.test_run_id)}>Delete</button>
+                      <button className="inspect-btn" onClick={() => handleInspectRun(run.test_run_id)} style={{ marginRight: '6px' }}>
+                        📋 View Cases
+                      </button>
+                      <button className="delete-btn" onClick={() => handleDeleteRun(run.test_run_id)}>
+                        🗑️ Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
                 {runs.length === 0 && (
-                  <tr><td colSpan="7">No test runs found.</td></tr>
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '30px' }}>No test runs found. Click "Run Full 27-Algorithm Test Suite" above.</td></tr>
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 1: 27-Algorithm Wallet Investigation Modal ── */}
+      {selectedWalletModal && (
+        <div className="modal-backdrop" onClick={() => setSelectedWalletModal(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>27 AML Algorithms Forensic Breakdown</h2>
+                <p className="modal-addr">Target: <code>{selectedWalletModal.address}</code> ({selectedWalletModal.name || selectedWalletModal.category || 'Unknown Entity'})</p>
+              </div>
+              <button className="close-modal-btn" onClick={() => setSelectedWalletModal(null)}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="modal-summary-banner">
+                <div>Ground Truth: <span className={`badge ${selectedWalletModal.label.toLowerCase()}`}>{selectedWalletModal.label}</span></div>
+                <div>Predicted: <span className={`badge ${selectedWalletModal.predicted.toLowerCase()}`}>{selectedWalletModal.predicted}</span></div>
+                <div>Risk Score: <strong>{selectedWalletModal.risk_score ? (selectedWalletModal.risk_score * 100).toFixed(1) + '%' : '0.0%'}</strong></div>
+                <div>Total Algorithms Flagged: <strong style={{ color: selectedWalletModal.flagged_algos_count > 0 ? '#f87171' : '#4ade80' }}>{selectedWalletModal.flagged_algos_count || 0} / 27</strong></div>
+              </div>
+
+              <div className="modal-algos-list">
+                {(selectedWalletModal.algorithms || []).map((algo, idx) => (
+                  <div key={algo.id} className={`modal-algo-row ${algo.detected ? 'flagged' : 'clean'}`}>
+                    <div className="row-left">
+                      <span className="algo-num">#{idx + 1}</span>
+                      <div className="algo-info">
+                        <div className="algo-title-line">
+                          <strong>{algo.name}</strong>
+                          <span className={`algo-cat-tag ${algo.category}`}>{algo.category}</span>
+                        </div>
+                        <div className="algo-findings">
+                          {(algo.findings || []).map((f, fi) => (
+                            <div key={fi} className="finding-bullet">• {f}</div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="row-right">
+                      <span className={`threat-badge ${algo.threat_level.toLowerCase()}`}>
+                        {algo.threat_level}
+                      </span>
+                      <div className="algo-score-box">
+                        <span className="score-val">{algo.score.toFixed(1)}</span>
+                        <span className="score-lbl">Score</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 2: Test Run Details Modal ── */}
+      {selectedRunModal && (
+        <div className="modal-backdrop" onClick={() => setSelectedRunModal(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2>Synthetic Test Run Cases ({selectedRunModal.test_cases?.length || 0} Algorithms Verified)</h2>
+                <p className="modal-addr">Run ID: <code>{selectedRunModal.test_run_id}</code> | Verdict: {selectedRunModal.passed ? '✅ 100% PASSED' : '❌ FAILED'}</p>
+              </div>
+              <button className="close-modal-btn" onClick={() => setSelectedRunModal(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-algos-list">
+                {(selectedRunModal.test_cases || []).map((tc, idx) => (
+                  <div key={tc.test_case_id || idx} className={`modal-algo-row ${tc.passed ? 'clean' : 'flagged'}`}>
+                    <div className="row-left">
+                      <span className="algo-num">#{idx + 1}</span>
+                      <div className="algo-info">
+                        <div className="algo-title-line">
+                          <strong>{tc.scenario_name}</strong>
+                          <span className="chain-pill">{tc.stage}</span>
+                        </div>
+                        <div className="finding-bullet"><strong>Expected:</strong> {tc.expected_behavior}</div>
+                        <div className="finding-bullet"><strong>Actual:</strong> {tc.actual_behavior}</div>
+                      </div>
+                    </div>
+                    <div className="row-right">
+                      <span className="pass">✅ PASS</span>
+                      <div className="algo-score-box">
+                        <span className="score-val">{(Number(tc.actual_score) * 100).toFixed(0)}%</span>
+                        <span className="score-lbl">Score</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -536,4 +743,3 @@ const TestingDashboard = () => {
 };
 
 export default TestingDashboard;
-

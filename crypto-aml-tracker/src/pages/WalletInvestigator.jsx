@@ -53,7 +53,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
   const [selectedChain, setSelectedChain] = useState('ethereum');
   const [selectedSource, setSelectedSource] = useState('local_db');
   const [limit, setLimit] = useState(100);
-  const [activeTab, setActiveTab] = useState('typology'); // 'typology', 'graph', 'transactions', 'dossier'
+  const [activeTab, setActiveTab] = useState('algorithms'); // 'algorithms', 'typology', 'graph', 'transactions', 'dossier'
   
   // Data Sources & Sample Wallets
   const [sources, setSources] = useState(DEFAULT_SOURCES);
@@ -70,9 +70,41 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
   const [investigationData, setInvestigationData] = useState(null);
   const [error, setError] = useState(null);
 
-  // Table filtering & search
+  // Table & Algorithm filtering
   const [txSearch, setTxSearch] = useState('');
   const [txStageFilter, setTxStageFilter] = useState('all');
+  const [algoSearch, setAlgoSearch] = useState('');
+  const [algoCategoryFilter, setAlgoCategoryFilter] = useState('all');
+  const [algoStatusFilter, setAlgoStatusFilter] = useState('all');
+
+  // Filtered algorithms list for Algorithm Matrix Tab
+  const filteredAlgorithms = useMemo(() => {
+    if (!investigationData?.algorithms_checked) return [];
+    const list = investigationData.algorithms_checked;
+    const q = algoSearch.toLowerCase().trim();
+
+    return list.filter(algo => {
+      // Category filter
+      if (algoCategoryFilter !== 'all' && algo.category !== algoCategoryFilter) {
+        return false;
+      }
+      // Status filter
+      if (algoStatusFilter === 'flagged' && !algo.detected) {
+        return false;
+      }
+      if (algoStatusFilter === 'critical_high' && !['CRITICAL', 'HIGH'].includes(algo.threat_level)) {
+        return false;
+      }
+      // Search query
+      if (!q) return true;
+      return (
+        algo.name.toLowerCase().includes(q) ||
+        algo.id.toLowerCase().includes(q) ||
+        (algo.description || '').toLowerCase().includes(q) ||
+        (algo.findings || []).some(f => f.toLowerCase().includes(q))
+      );
+    });
+  }, [investigationData, algoSearch, algoCategoryFilter, algoStatusFilter]);
 
   // Load sources and sample wallets on mount
   useEffect(() => {
@@ -91,8 +123,9 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
 
   // Pre-flight database check whenever address or chain changes (debounced)
   useEffect(() => {
-    const trimmed = (addressInput || '').trim();
-    if (!trimmed || trimmed.length < 6) {
+    const raw = (addressInput || '').trim();
+    const clean = raw.replace(/[()"'`\s]/g, '');
+    if (!clean || clean.length < 6) {
       setDbCheckResult(null);
       setDbCheckLoading(false);
       return;
@@ -100,7 +133,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
 
     setDbCheckLoading(true);
     const timer = setTimeout(() => {
-      checkWalletDatabase(trimmed, selectedChain)
+      checkWalletDatabase(clean, selectedChain)
         .then((res) => {
           setDbCheckResult(res);
         })
@@ -119,25 +152,43 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
   // Auto-trigger if initialAddress provided
   useEffect(() => {
     if (initialAddress && initialAddress.trim().length > 6) {
-      setAddressInput(initialAddress);
-      handleExecuteInvestigation(initialAddress);
+      const clean = initialAddress.trim().replace(/[()"'`\s]/g, '');
+      setAddressInput(clean);
+      handleExecuteInvestigation(clean);
     }
   }, [initialAddress]);
 
-  const handleExecuteInvestigation = async (addrToUse) => {
-    const targetAddr = (addrToUse || addressInput || '').trim();
+  const handleExecuteInvestigation = async (addrToUse, chainToUse) => {
+    let targetAddr = (addrToUse || addressInput || '').trim();
+    // Sanitize any quotes, brackets, parentheses, or whitespace
+    targetAddr = targetAddr.replace(/[()"'`\s]/g, '');
     if (!targetAddr) {
       setError('Please insert a valid wallet address to extract.');
       return;
     }
 
+    // Auto-detect network if not matching
+    let chain = (chainToUse || selectedChain || 'ethereum').toLowerCase();
+    if (targetAddr.startsWith('0x') && targetAddr.length === 42) {
+      const evmChains = ['ethereum', 'polygon', 'bnb', 'arbitrum', 'base', 'avalanche', 'optimism'];
+      if (!evmChains.includes(chain)) {
+        chain = 'ethereum';
+      }
+    } else if (/^(1|3|bc1|L|M|ltc1|D|q|bitcoincash:)/i.test(targetAddr)) {
+      chain = 'bitcoin';
+    } else if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(targetAddr) && !targetAddr.startsWith('0x')) {
+      chain = 'solana';
+    }
+
+    setSelectedChain(chain);
+    setAddressInput(targetAddr);
     setError(null);
     setLoading(true);
     setProgressStep(1); // 1. Checking Local Database
 
     try {
       // Step 1: Pre-flight check database
-      const checkRes = await checkWalletDatabase(targetAddr, selectedChain).catch(() => null);
+      const checkRes = await checkWalletDatabase(targetAddr, chain).catch(() => null);
       if (checkRes) setDbCheckResult(checkRes);
 
       await new Promise(r => setTimeout(r, 220));
@@ -155,7 +206,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
       // Execute API Investigation
       const res = await investigateWallet({
         address: targetAddr,
-        chain: selectedChain,
+        chain: chain,
         source: selectedSource,
         limit: Number(limit),
       });
@@ -177,9 +228,11 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
   };
 
   const handleSelectSample = (sample) => {
-    setAddressInput(sample.address);
-    if (sample.chain) setSelectedChain(sample.chain);
-    handleExecuteInvestigation(sample.address);
+    const cleanAddr = (sample.address || '').replace(/[()"'`\s]/g, '');
+    const cleanChain = sample.chain || 'ethereum';
+    setAddressInput(cleanAddr);
+    setSelectedChain(cleanChain);
+    handleExecuteInvestigation(cleanAddr, cleanChain);
   };
 
   // Filtered transactions for Ledger Tab
@@ -598,7 +651,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
 
             {/* Verdict Details */}
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
                 <span style={{
                   padding: '4px 10px',
                   background: `${investigationData.composite_risk.color}22`,
@@ -615,6 +668,24 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
                   Target: <span style={{ color: '#E2D9C8', fontFamily: 'monospace' }}>{investigationData.address}</span>
                 </span>
                 <ChainBadge chain={investigationData.chain} />
+
+                {/* Algorithm Suite Flagged Badge */}
+                {investigationData.algorithm_summary && (
+                  <span style={{
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    background: investigationData.algorithm_summary.total_flagged > 0 ? 'rgba(239,68,68,0.18)' : 'rgba(34,197,94,0.18)',
+                    border: `1px solid ${investigationData.algorithm_summary.total_flagged > 0 ? 'rgba(239,68,68,0.4)' : 'rgba(34,197,94,0.4)'}`,
+                    color: investigationData.algorithm_summary.total_flagged > 0 ? '#F87171' : '#4ADE80',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}>
+                    <span>⚡</span> {investigationData.algorithm_summary.total_flagged} of {investigationData.algorithm_summary.total_algorithms_evaluated || 27} Algorithms Flagged
+                  </span>
+                )}
               </div>
 
               <div style={{ fontSize: '15px', fontWeight: '600', color: '#E2D9C8', marginBottom: '8px' }}>
@@ -643,25 +714,78 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
                   </span>
                 )}
               </div>
+
+              {/* Algorithm Category Badges */}
+              {investigationData.algorithm_summary?.categories && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'placement', label: 'Placement', total: 6, icon: '⟁' },
+                    { id: 'layering', label: 'Layering', total: 8, icon: '⧉' },
+                    { id: 'integration', label: 'Integration', total: 5, icon: '💰' },
+                    { id: 'clustering', label: 'Clustering', total: 5, icon: '🕸' },
+                    { id: 'valuation', label: 'Valuation & SAR', total: 3, icon: '⚖️' },
+                  ].map(cat => {
+                    const cData = investigationData.algorithm_summary.categories[cat.id] || { flagged: 0, total: cat.total };
+                    const isFlagged = cData.flagged > 0;
+                    return (
+                      <span
+                        key={cat.id}
+                        onClick={() => { setActiveTab('algorithms'); setAlgoCategoryFilter(cat.id === 'valuation' ? 'valuation' : cat.id); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '5px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          background: isFlagged ? 'rgba(245,158,11,0.12)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${isFlagged ? 'rgba(245,158,11,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                          color: isFlagged ? '#FBBF24' : '#8A9DB5',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                        title={`Click to view ${cat.label} algorithms`}
+                      >
+                        <span>{cat.icon}</span> {cat.label}: <strong style={{ color: isFlagged ? '#F87171' : '#4ADE80' }}>{cData.flagged}/{cData.total}</strong>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Quick Actions */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={() => setActiveTab('algorithms')}
+                style={{
+                  padding: '8px 16px',
+                  background: activeTab === 'algorithms' ? 'rgba(201,168,76,0.25)' : 'rgba(201,168,76,0.12)',
+                  border: `1px solid ${activeTab === 'algorithms' ? '#C9A84C' : 'rgba(201,168,76,0.3)'}`,
+                  borderRadius: '8px',
+                  color: '#C9A84C',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                }}
+              >
+                ⚡ View 27 Algorithms
+              </button>
               {onNavigateToGraph && (
                 <button
                   onClick={() => onNavigateToGraph(investigationData.address)}
                   style={{
                     padding: '8px 16px',
-                    background: 'rgba(201,168,76,0.12)',
-                    border: '1px solid rgba(201,168,76,0.3)',
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.15)',
                     borderRadius: '8px',
-                    color: '#C9A84C',
+                    color: '#E2D9C8',
                     fontSize: '12px',
                     fontWeight: '600',
                     cursor: 'pointer',
                   }}
                 >
-                  🕸 View in Graph Explorer
+                  🕸 Graph Explorer
                 </button>
               )}
               <button
@@ -697,7 +821,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>⟁</span>
                   <span style={{ fontSize: '13px', fontWeight: '700', color: '#E2D9C8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    1. Placement
+                    1. Placement (Ingress)
                   </span>
                 </div>
                 <span style={{
@@ -735,7 +859,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>⧉</span>
                   <span style={{ fontSize: '13px', fontWeight: '700', color: '#E2D9C8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    2. Layering
+                    2. Layering (Hops)
                   </span>
                 </div>
                 <span style={{
@@ -773,7 +897,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '18px' }}>💰</span>
                   <span style={{ fontSize: '13px', fontWeight: '700', color: '#E2D9C8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    3. Integration
+                    3. Integration (Exits)
                   </span>
                 </div>
                 <span style={{
@@ -806,8 +930,10 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
             gap: '8px',
             borderBottom: '1px solid rgba(201,168,76,0.18)',
             paddingBottom: '2px',
+            overflowX: 'auto',
           }}>
             {[
+              { id: 'algorithms', label: `⚡ Algorithm Matrix (${investigationData.algorithms_checked?.length || 27})`, icon: '⚡' },
               { id: 'typology', label: '🔎 3-Stage AML Deep Dive', icon: '🔎' },
               { id: 'graph', label: '🕸 Fund Flow Graph', icon: '🕸' },
               { id: 'transactions', label: `📜 Extracted Ledger (${investigationData.transactions.length})`, icon: '📜' },
@@ -829,6 +955,7 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
                     cursor: 'pointer',
                     borderRadius: '6px 6px 0 0',
                     transition: 'all 0.15s',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {t.label}
@@ -836,6 +963,249 @@ export default function WalletInvestigator({ initialAddress = '', onNavigateToGr
               );
             })}
           </div>
+
+          {/* ── TAB CONTENT ── */}
+
+          {/* TAB 0: Full 27-Algorithm & Heuristic Matrix */}
+          {activeTab === 'algorithms' && (
+            <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              
+              {/* Category & Status Filter Header */}
+              <div style={{
+                background: '#0D1628',
+                border: '1px solid rgba(201,168,76,0.18)',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#E2D9C8', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>⚡</span> Comprehensive 27-Algorithm AML Evaluation Suite
+                    <span style={{ fontSize: '11px', color: '#8A9DB5', fontWeight: '400' }}>
+                      (Evaluating {investigationData.algorithms_checked?.length || 27} algorithms & heuristics)
+                    </span>
+                  </div>
+
+                  {/* Search Bar */}
+                  <input
+                    type="text"
+                    placeholder="Search algorithm or finding..."
+                    value={algoSearch}
+                    onChange={(e) => setAlgoSearch(e.target.value)}
+                    style={{
+                      padding: '7px 14px',
+                      background: '#070D19',
+                      border: '1px solid rgba(201,168,76,0.25)',
+                      borderRadius: '6px',
+                      color: '#E2D9C8',
+                      fontSize: '12px',
+                      outline: 'none',
+                      minWidth: '240px',
+                    }}
+                  />
+                </div>
+
+                {/* Filter Controls Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  
+                  {/* Category Pills */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {[
+                      { id: 'all', label: 'All Categories (27)' },
+                      { id: 'placement', label: 'Placement (6)' },
+                      { id: 'layering', label: 'Layering (8)' },
+                      { id: 'integration', label: 'Integration (5)' },
+                      { id: 'clustering', label: 'Clustering Heuristics (5)' },
+                      { id: 'valuation', label: 'Valuation Models (2)' },
+                      { id: 'regulatory', label: 'Regulatory / SAR (1)' },
+                    ].map(cat => {
+                      const isSel = algoCategoryFilter === cat.id;
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => setAlgoCategoryFilter(cat.id)}
+                          style={{
+                            padding: '5px 12px',
+                            background: isSel ? 'rgba(201,168,76,0.22)' : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${isSel ? '#C9A84C' : 'rgba(255,255,255,0.08)'}`,
+                            borderRadius: '6px',
+                            color: isSel ? '#E2D9C8' : '#8A9DB5',
+                            fontSize: '11px',
+                            fontWeight: isSel ? '700' : '500',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s',
+                          }}
+                        >
+                          {cat.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Status Toggle */}
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {[
+                      { id: 'all', label: 'All Statuses' },
+                      { id: 'flagged', label: 'Flagged Only' },
+                      { id: 'critical_high', label: 'Critical & High Only' },
+                    ].map(st => {
+                      const isSel = algoStatusFilter === st.id;
+                      return (
+                        <button
+                          key={st.id}
+                          onClick={() => setAlgoStatusFilter(st.id)}
+                          style={{
+                            padding: '5px 10px',
+                            background: isSel ? 'rgba(239,68,68,0.2)' : 'rgba(255,255,255,0.03)',
+                            border: `1px solid ${isSel ? '#EF4444' : 'rgba(255,255,255,0.08)'}`,
+                            borderRadius: '6px',
+                            color: isSel ? '#F87171' : '#8A9DB5',
+                            fontSize: '11px',
+                            fontWeight: isSel ? '700' : '500',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {st.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Algorithm Cards Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))',
+                gap: '16px',
+              }}>
+                {filteredAlgorithms.map((algo) => {
+                  const isFlagged = algo.detected;
+                  return (
+                    <div
+                      key={algo.id}
+                      style={{
+                        background: '#0D1628',
+                        border: `1px solid ${algo.threat_color}55`,
+                        borderRadius: '12px',
+                        padding: '18px 20px',
+                        boxShadow: isFlagged ? `0 4px 20px rgba(0,0,0,0.3), 0 0 12px ${algo.threat_color}15` : '0 4px 16px rgba(0,0,0,0.2)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        gap: '12px',
+                        transition: 'transform 0.15s, border-color 0.15s',
+                      }}
+                    >
+                      {/* Top Row: Category + Status Badge + Score */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: '700',
+                            letterSpacing: '0.06em',
+                            textTransform: 'uppercase',
+                            color: '#C8B98A',
+                            background: 'rgba(201,168,76,0.08)',
+                            border: '1px solid rgba(201,168,76,0.2)',
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                          }}>
+                            {algo.category_label || algo.category}
+                          </span>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: '800',
+                              letterSpacing: '0.04em',
+                              background: `${algo.threat_color}22`,
+                              border: `1px solid ${algo.threat_color}66`,
+                              color: algo.threat_color,
+                            }}>
+                              {algo.threat_level} ({algo.score})
+                            </span>
+                            <span style={{ fontSize: '11px', color: '#8A9DB5', fontWeight: '600' }}>
+                              {Math.round(algo.confidence * 100)}% Conf
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Algorithm Name */}
+                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#E2D9C8', marginBottom: '6px' }}>
+                          {algo.name}
+                        </div>
+
+                        {/* Technical Description */}
+                        <div style={{ fontSize: '12px', color: '#8A9DB5', lineHeight: 1.4, marginBottom: '12px' }}>
+                          {algo.description}
+                        </div>
+
+                        {/* Evidentiary Findings List */}
+                        <div style={{
+                          background: '#070D19',
+                          border: '1px solid rgba(255,255,255,0.05)',
+                          borderRadius: '8px',
+                          padding: '10px 14px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
+                        }}>
+                          <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                            Evidentiary Findings & Signals:
+                          </div>
+                          {(algo.findings || []).map((f, fi) => (
+                            <div key={fi} style={{ fontSize: '11px', color: isFlagged ? '#E2D9C8' : '#94A3B8', display: 'flex', alignItems: 'flex-start', gap: '6px' }}>
+                              <span style={{ color: algo.threat_color }}>•</span>
+                              <span>{f}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Bottom Supporting Hashes */}
+                      {algo.supporting_txs?.length > 0 && (
+                        <div style={{
+                          fontSize: '10px',
+                          color: '#64748B',
+                          borderTop: '1px solid rgba(255,255,255,0.04)',
+                          paddingTop: '8px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}>
+                          <span>Evidence: <strong style={{ color: '#C8B98A', fontFamily: 'monospace' }}>{truncateHash(algo.supporting_txs[0], 8, 6)}</strong></span>
+                          <span style={{ color: algo.threat_color, fontWeight: '700' }}>
+                            {isFlagged ? '⚠️ Signal Active' : '✓ Normal Baseline'}
+                          </span>
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+              </div>
+
+              {filteredAlgorithms.length === 0 && (
+                <div style={{
+                  padding: '40px',
+                  background: '#0D1628',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                  color: '#8A9DB5',
+                  fontSize: '13px',
+                }}>
+                  No algorithms match the selected filters.
+                </div>
+              )}
+
+            </div>
+          )}
 
           {/* ── TAB CONTENT ── */}
           
