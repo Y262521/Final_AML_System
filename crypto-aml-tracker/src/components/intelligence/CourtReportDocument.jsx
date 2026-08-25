@@ -41,6 +41,8 @@ export default function CourtReportDocument({ investigationData }) {
     integration_stage = {},
     composite_risk = {},
     transactions = [],
+    algorithms_checked = [],
+    algorithm_summary = {},
   } = investigationData;
 
   // Compute a deterministic SHA-256 Case Evidence Digest
@@ -568,6 +570,72 @@ export default function CourtReportDocument({ investigationData }) {
 
           </div>
         </div>
+
+        {/* ═══ SECTION IV-B: FULL 27-ALGORITHM FORENSIC AUDIT MATRIX (EXHIBIT B) ═══ */}
+        {algorithms_checked && algorithms_checked.length > 0 && (
+          <div className="cr-section">
+            <div className="cr-section-header">
+              <span className="cr-sec-num">SECTION IV-B</span>
+              <h3 className="cr-sec-title">COMPREHENSIVE 27-ALGORITHM FORENSIC AUDIT MATRIX (EXHIBIT B)</h3>
+            </div>
+            <div className="cr-section-body">
+              <p className="cr-paragraph">
+                The target wallet telemetry was evaluated against the National Bank of Ethiopia’s standardized suite of <strong>{algorithms_checked.length} deterministic AML algorithms and heuristic detectors</strong> across all money laundering typologies:
+              </p>
+
+              <div className="cr-table-wrap" style={{ marginTop: '10px' }}>
+                <table className="cr-table cr-ledger-table" style={{ fontSize: '11px' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '60px' }}>Item #</th>
+                      <th>Algorithm / Heuristic Name</th>
+                      <th>Category</th>
+                      <th>Score</th>
+                      <th>Confidence</th>
+                      <th>Status Verdict</th>
+                      <th>Evidentiary Finding</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {algorithms_checked.map((algo, idx) => (
+                      <tr key={algo.id || idx}>
+                        <td className="cr-exhibit-num">Ex. B-{String(idx + 1).padStart(2, '0')}</td>
+                        <td>
+                          <strong>{algo.name}</strong>
+                          <div style={{ fontSize: '10px', color: '#8A9DB5', fontFamily: 'monospace' }}>{algo.id}</div>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: '700', color: '#B8963E' }}>
+                            {algo.category_label || algo.category}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: '700', color: algo.threat_color || '#B8963E' }}>
+                          {algo.score}/100
+                        </td>
+                        <td>{Math.round((algo.confidence || 0.85) * 100)}%</td>
+                        <td>
+                          <span style={{
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '9px',
+                            fontWeight: '800',
+                            background: algo.detected ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.15)',
+                            color: algo.detected ? '#F87171' : '#4ADE80',
+                          }}>
+                            {algo.threat_level} {algo.detected ? '⚠️ FLAGGED' : '✓ NORMAL'}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '11px', color: algo.detected ? '#E2D9C8' : '#8A9DB5' }}>
+                          {(algo.findings && algo.findings[0]) || algo.description}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ═══ SECTION 5: EVIDENTIARY TRANSACTION LEDGER (EXHIBIT A) ═══ */}
         <div className="cr-section">

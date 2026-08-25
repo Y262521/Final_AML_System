@@ -7,8 +7,15 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 async function _get(url) {
   const res = await fetch(url);
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`[${res.status}] ${text || res.statusText}`);
+    let errorMsg = res.statusText;
+    try {
+      const data = await res.json();
+      errorMsg = data.detail || data.message || errorMsg;
+    } catch {
+      const text = await res.text().catch(() => '');
+      if (text) errorMsg = text;
+    }
+    throw new Error(errorMsg);
   }
   return res.json();
 }
@@ -20,8 +27,15 @@ async function _post(url, body = {}) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`[${res.status}] ${text || res.statusText}`);
+    let errorMsg = res.statusText;
+    try {
+      const data = await res.json();
+      errorMsg = data.detail || data.message || errorMsg;
+    } catch {
+      const text = await res.text().catch(() => '');
+      if (text) errorMsg = text;
+    }
+    throw new Error(errorMsg);
   }
   return res.json();
 }
