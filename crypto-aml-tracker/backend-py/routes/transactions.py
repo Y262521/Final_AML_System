@@ -29,27 +29,6 @@ def _threshold_eth() -> float:
         return 10.0
 
 
-def _risk_score(value_eth: float, threshold: float) -> float:
-    if threshold <= 0 or value_eth <= 0:
-        return 0.0
-
-    ratio = value_eth / threshold
-    if ratio >= 2.0:
-        return 100.0
-    if ratio >= 1.0:
-        return round(75.0 + 25.0 * (ratio - 1.0), 1)
-    return round(max(0.0, min(75.0, 75.0 * ratio)), 1)
-
-
-def _risk_label(value_eth: float, threshold: float) -> str:
-    score = _risk_score(value_eth, threshold)
-    if score > 75:
-        return "High"
-    if score > 40:
-        return "Medium"
-    return "Low"
-
-
 def _format_ts(value: Any) -> str | None:
     if value is None:
         return None
@@ -100,7 +79,6 @@ async def get_latest_transactions(
     chain: str | None = Query(None),
 ):
     _require_mysql()
-    threshold = _threshold_eth()
 
     if chain and chain != "all":
         total_row = await fetch_one(
@@ -116,6 +94,35 @@ async def get_latest_transactions(
         total_row = await fetch_one("SELECT COUNT(*) AS total FROM transactions") or {}
         rows = await fetch_all(_latest_transactions_sql(sort_by), (limit, offset))
 
+    # Fast batch lookup for address AML cluster risk
+    addr_set: set[str] = set()
+    for r in (rows or []):
+        if r.get("from_address"):
+            addr_set.add(r["from_address"])
+        if r.get("to_address"):
+            addr_set.add(r["to_address"])
+
+    addr_risk_map: dict[str, dict] = {}
+    if addr_set:
+        try:
+            placeholders = ", ".join(["%s"] * len(addr_set))
+            addr_rows = await fetch_all(
+                f"""
+                SELECT a.address, COALESCE(c.risk_score, 0) AS risk_score, c.risk_level
+                FROM addresses a
+                JOIN wallet_clusters c ON c.id = a.cluster_id
+                WHERE a.address IN ({placeholders})
+                """,
+                tuple(addr_set),
+            )
+            for ar in (addr_rows or []):
+                addr_risk_map[ar["address"]] = {
+                    "risk_score": float(ar.get("risk_score") or 0.0),
+                    "risk_level": str(ar.get("risk_level") or "").lower(),
+                }
+        except Exception:
+            pass
+
     # Live current market prices
     def _get_live_rates() -> dict:
         try:
@@ -127,11 +134,28 @@ async def get_latest_transactions(
     live_rates = _get_live_rates()
 
     results = []
-    for row in rows:
+    for row in (rows or []):
         value_eth    = float(row.get("value_eth") or 0.0)
         native_asset = row.get("native_asset") or "ETH"
         chain_name   = row.get("chain_name") or "ethereum"
-        score        = _risk_score(value_eth, threshold)
+
+        from_info = addr_risk_map.get(row.get("from_address"), {})
+        to_info   = addr_risk_map.get(row.get("to_address"), {})
+        from_score = from_info.get("risk_score", 0.0)
+        to_score   = to_info.get("risk_score", 0.0)
+        raw_score  = max(from_score, to_score)
+        score      = round(raw_score * 100.0, 1) if 0.0 < raw_score <= 1.0 else round(raw_score, 1)
+
+        from_lvl = from_info.get("risk_level", "")
+        to_lvl   = to_info.get("risk_level", "")
+        if score >= 80 or "critical" in (from_lvl, to_lvl):
+            label = "High"
+        elif score >= 60 or "high" in (from_lvl, to_lvl):
+            label = "High"
+        elif score >= 40 or "medium" in (from_lvl, to_lvl):
+            label = "Medium"
+        else:
+            label = "Low"
 
         # Historical USD at execution time (Chainlink oracle stored at ETL time)
         usd_stored = row.get("usd_at_execution")
@@ -154,8 +178,8 @@ async def get_latest_transactions(
             "isContractCall": bool(row.get("is_contract_call")),
             "gasUsed":        row.get("gas_used"),
             "status":         row.get("status"),
-            "riskScore":      round(score, 1),
-            "riskLabel":      _risk_label(value_eth, threshold),
+            "riskScore":      score,
+            "riskLabel":      label,
             # Chain identity
             "chain":           chain_name,
             "chainId":         int(row.get("chain_id") or 1),

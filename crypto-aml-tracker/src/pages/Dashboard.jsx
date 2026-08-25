@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Transaction Table — NBE Institutional Theme
  * Phase 5: Multi-chain filter + chain badge + USD value sorting
  */
@@ -9,8 +9,6 @@ import ChainFilter from '../components/chain/ChainFilter';
 import ChainStats from '../components/chain/ChainStats';
 
 const PAGE_SIZE = 20;
-const HIGH_VALUE_THRESHOLD_USD = 35000; // ~$35k = high value across all chains
-
 // ── NBE color tokens ──────────────────────────────────────────
 const S = {
   surface1: '#0D1628',
@@ -29,25 +27,9 @@ const S = {
 };
 
 const riskStyle = (label) => {
-  if (label === 'High') return { color: '#F87171', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)' };
+  if (label === 'High' || label === 'Critical') return { color: '#F87171', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.28)' };
   if (label === 'Medium') return { color: '#FBBF24', background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.28)' };
   return { color: '#4ADE80', background: 'rgba(74,222,128,0.10)', border: '1px solid rgba(74,222,128,0.25)' };
-};
-
-// Risk scoring based on USD value — chain-agnostic and comparable
-const scoreFromUSD = (usdValue) => {
-  const v = Number(usdValue || 0);
-  if (!Number.isFinite(v) || HIGH_VALUE_THRESHOLD_USD <= 0) return 0;
-  const ratio = v / HIGH_VALUE_THRESHOLD_USD;
-  if (ratio >= 2) return 100;
-  if (ratio >= 1) return Math.round((75 + 25 * (ratio - 1)) * 10) / 10;
-  return Math.round(Math.min(75, 75 * ratio) * 10) / 10;
-};
-const labelFromUSD = (usdValue) => {
-  const s = scoreFromUSD(usdValue);
-  if (s > 75) return 'High';
-  if (s > 40) return 'Medium';
-  return 'Low';
 };
 
 // Format USD for display
@@ -94,9 +76,9 @@ export default function Dashboard({
   if (error) return <div style={{ color: '#F87171', padding: '1.5rem' }}>Error: {error}</div>;
 
   const filtered = transactions.filter(tx => {
-    const usdVal = tx.usdValue || 0;
-    const derived = labelFromUSD(usdVal);
-    const matchRisk = riskFilter === 'All' || derived === riskFilter;
+    const score = Number(tx.riskScore || 0);
+    const label = tx.riskLabel || (score >= 60 ? 'High' : score >= 40 ? 'Medium' : 'Low');
+    const matchRisk = riskFilter === 'All' || label.toLowerCase() === riskFilter.toLowerCase();
     const txChain = tx.chain || null;
     const matchChain = selectedChain === 'all' || (txChain !== null && txChain === selectedChain);
     const q = search.toLowerCase();
@@ -265,8 +247,8 @@ export default function Dashboard({
               </td></tr>
               : pageTxs.map((tx, idx) => {
                 const usdVal = tx.usdAtExecution || tx.usdValue || 0;
-                const score = scoreFromUSD(usdVal);
-                const label = labelFromUSD(usdVal);
+                const score = Number(tx.riskScore || 0);
+                const label = tx.riskLabel || (score >= 60 ? 'High' : score >= 40 ? 'Medium' : 'Low');
                 const rc = riskStyle(label);
                 // Explorer link per chain
                 const explorerHref = {
